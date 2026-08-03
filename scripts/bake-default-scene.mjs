@@ -21,15 +21,11 @@ import {
   ASCENDER_ROWS,
   GLYPH_HEIGHT,
   Raster,
-  bboxAround,
-  buildScene,
   drawText,
   encodePng,
-  fetchOsmData,
-  geocode,
   hex,
   measureText,
-  renderScene,
+  renderCityScene,
   ResponseCache,
 } from '../dist/index.js';
 
@@ -70,16 +66,28 @@ function compact(value) {
 const log = (m) => process.stderr.write(`${m}\n`);
 const cache = new ResponseCache();
 
-const place = await geocode(QUERY, { cache, onProgress: log });
-log(`Resolved to ${place.displayName}`);
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
 
-const data = await fetchOsmData(bboxAround(place.centre, RADIUS), { cache, onProgress: log });
-const scene = buildScene(data, { place, radius: RADIUS, seed: 0 });
-
-log(
-  `Scene: ${scene.stats.buildings} buildings, ${scene.stats.roads} roads, ` +
-    `${scene.stats.areas} areas, ${scene.stats.trees} trees`,
-);
+// Built through the same pipeline the page uses, with the same `auto` setting,
+// so the opening view is exactly what typing the query would give you. It also
+// renders the share card in the same pass.
+const result = await renderCityScene(QUERY, {
+  cache,
+  onProgress: log,
+  auto: true,
+  radius: RADIUS,
+  seed: 0,
+  theme: 'daylight',
+  width: OG_WIDTH,
+  height: OG_HEIGHT,
+  scale: 1,
+  // The card carries its own wording; the in-image labels would collide.
+  title: false,
+  subtitle: false,
+  attribution: false,
+});
+const scene = result.scene;
 
 const payload = {
   // Recorded so the page can tell the user what it is showing, and so a stale
@@ -101,20 +109,7 @@ log(`Wrote ${OUT} — ${(json.length / 1024).toFixed(0)} kB (before transfer com
  * bitmap font — so the card is a genuine sample of the output rather than a
  * mockup of it, and it cannot go stale as the renderer changes.
  */
-const OG_WIDTH = 1200;
-const OG_HEIGHT = 630;
-
-const card = renderScene(scene, {
-  theme: 'daylight',
-  width: OG_WIDTH,
-  height: OG_HEIGHT,
-  scale: 1,
-  // The card carries its own wording; the in-image labels would collide.
-  title: false,
-  subtitle: false,
-  attribution: false,
-});
-
+const card = result.image;
 const raster = card.raster;
 const ink = card.theme.text;
 const paper = card.theme.textShadow ?? undefined;

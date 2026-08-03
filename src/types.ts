@@ -3,7 +3,7 @@
  */
 
 import type { Boundary, LatLonPolygons } from './geo/boundary.js';
-import type { LatLon, Point } from './geo/project.js';
+import type { BBox, LatLon, Point } from './geo/project.js';
 import type { Ring } from './geo/polygon.js';
 
 export type RoadClass =
@@ -45,6 +45,14 @@ export interface Place {
   category?: string;
   type?: string;
   countryCode?: string;
+  /**
+   * Nominatim's place_rank: how far down the hierarchy the match sits.
+   * Roughly 4 = country, 8 = state, 12 = county, 16 = city, 19 = suburb,
+   * 26 = street, 30 = a single building. Used to infer framing.
+   */
+  placeRank?: number;
+  /** The match's extent, as reported by the geocoder. */
+  boundingBox?: BBox;
   /**
    * The matched object's own outline, as lat/lon rings, when the geocoder
    * returned one. A city or postcode district has this; a street address or a

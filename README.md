@@ -21,6 +21,7 @@ There are **no runtime dependencies**. The polygon rasteriser, the PNG encoder a
 
 - [Install](#install)
 - [Usage](#usage)
+- [Letting the place decide (`--auto`)](#letting-the-place-decide---auto)
 - [Whole regions instead of a square](#whole-regions-instead-of-a-square)
 - [Highlighting an address](#highlighting-an-address)
 - [Themes](#themes)
@@ -76,9 +77,34 @@ Run `iso-cities --help` for the full flag list. The most useful ones:
 | `--exaggeration <n>` | `1.35` | Vertical height multiplier |
 | `--seed <n>` | `0` | Changes roof colours and tree placement |
 | `-o, --out <file>` | derived | Output path |
+| `--auto` | off | Let the match decide the framing — see [below](#letting-the-place-decide---auto) |
 | `--json <file>` | — | Also dump the parsed scene as JSON |
 
 Layers can be switched off individually: `--no-buildings`, `--no-roads`, `--no-water`, `--no-greenery`, `--no-trees`, `--no-rails`. Styling has `--no-shadows`, `--no-windows`, `--no-outlines`, `--no-title`.
+
+## Letting the place decide (`--auto`)
+
+One query, and the framing follows what you actually matched:
+
+```bash
+iso-cities "Brandenburger Tor, Berlin" --auto   # one building, picked out with a pin
+iso-cities "Kreuzberg, Berlin" --auto           # a district, drawn around its centre
+iso-cities "Monaco" --auto                      # bigger than a city, drawn as its outline
+```
+
+Nominatim ranks every result down a hierarchy — roughly 4 for a country, 8 for a state, 16 for a city, 26 for a street, 30 for a single building. `--auto` reads that rank:
+
+| What you matched | What you get |
+| --- | --- |
+| Bigger than a city (county, state, country) | Its whole outline, if small enough to fetch |
+| A city, town, district, postcode or street | A radius around its centre |
+| A single address, building or POI | A radius around it, with the building picked out |
+
+The size guard matters more than it sounds. A county is already thousands of square kilometres and a country is hundreds of thousands — far past what the public Overpass API will serve — so `--auto` falls back to the centre and says why rather than issuing a query that is certain to fail.
+
+That check is done in two steps, because judging a shape by its bounding box is unreliable: Monaco's box is 262 km² for a country of about 2. So the box is only a cheap filter with generous slack, and the real area is measured once the outline is actually in hand.
+
+`--region` still overrides everything if you want a specific city drawn as its outline.
 
 ## Whole regions instead of a square
 

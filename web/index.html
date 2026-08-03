@@ -89,17 +89,35 @@
       <form id="controls" autocomplete="off">
         <div class="row primary">
           <label class="grow">
-            <span>Place</span>
+            <span>A place, a postal code, or an address</span>
             <input
               id="query"
               type="text"
               value="Reichstag, Berlin"
-              placeholder="Kreuzberg, Berlin — or a postcode"
+              placeholder="Reichstag, Berlin — or Kreuzberg, or 10115 Berlin"
               required
             />
           </label>
           <button id="render" type="submit">Render</button>
         </div>
+
+        <p class="examples">
+          <span>Try</span>
+          <button type="button" class="chip" data-example="Reichstag, Berlin">a building</button>
+          <button type="button" class="chip" data-example="Museum für Naturkunde, Berlin">
+            an address
+          </button>
+          <button type="button" class="chip" data-example="Kreuzberg, Berlin">a district</button>
+          <button type="button" class="chip" data-example="10115 Berlin">a postal code</button>
+          <button type="button" class="chip" data-example="Venice, Italy">a city</button>
+          <button type="button" class="chip" data-example="Bruges, Belgium">an old town</button>
+        </p>
+
+        <p class="hint">
+          Type a single building or an address and it gets picked out with a pin. Type a city,
+          district or postal code and you get the streets around its centre. Anything larger than a
+          city is drawn as its own outline, if it is small enough to fetch.
+        </p>
 
         <div class="field">
           <span class="field-label">
@@ -121,7 +139,7 @@
           <div class="toggle-cluster">
             <label class="check">
               <input id="region" type="checkbox" />
-              <span>Whole region</span>
+              <span>Force whole region</span>
             </label>
             <label class="check">
               <input id="trees" type="checkbox" checked />
@@ -134,23 +152,6 @@
           </div>
         </div>
 
-        <details class="advanced" id="advanced">
-          <summary>Highlight an address</summary>
-          <div class="advanced-body">
-            <div class="row">
-              <label class="grow">
-                <span>Address</span>
-                <input id="highlight" type="text" placeholder="Museum für Naturkunde, Berlin" />
-              </label>
-            </div>
-            <div class="row toggles">
-              <label class="check" id="centerRow">
-                <input id="center" type="checkbox" />
-                <span>Centre the view on that address, not the place</span>
-              </label>
-            </div>
-          </div>
-        </details>
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite">Ready.</p>

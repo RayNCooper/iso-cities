@@ -207,6 +207,44 @@ label.check.is-disabled {
   cursor: not-allowed;
 }
 
+/* ------------------------------------------------------ examples and hints */
+
+.examples {
+  margin: -0.35rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 400;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.hint {
+  margin: 0;
+  max-width: 52rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
 /* -------------------------------------------------------------- theme grid */
 
 .field {

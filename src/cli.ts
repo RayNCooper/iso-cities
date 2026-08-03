@@ -32,6 +32,7 @@ EXAMPLES
   iso-cities --lat 45.4408 --lon 12.3155 --theme gameboy
   iso-cities --postcode 10115 --country DE --region
   iso-cities "Bruges, Belgium" --region --no-trees
+  iso-cities "Brandenburger Tor, Berlin" --auto
   iso-cities --postcode 10115 --country DE --region \\
              --highlight "Museum fuer Naturkunde, Berlin"
   iso-cities "Berlin" --highlight "Museum fuer Naturkunde" \\
@@ -46,6 +47,12 @@ PLACE
   --lat <deg> --lon <deg>  Exact coordinates, skipping the geocoder
   --name <text>            Override the label drawn on the image
   --language <code>        Preferred language for place names (default: en)
+
+FRAMING BY MATCH
+      --auto               Let the match decide: bigger than a city draws its
+                           whole outline, a city or district draws a radius
+                           around it, an address draws a radius and picks out
+                           the building. --region still overrides this.
 
 REGION
       --region             Draw the place's real outline instead of a square.
@@ -136,6 +143,7 @@ export async function main(argv: string[]): Promise<number> {
         language: { type: 'string' },
 
         region: { type: 'boolean' },
+        auto: { type: 'boolean' },
         highlight: { type: 'string' },
         'highlight-lat': { type: 'string' },
         'highlight-lon': { type: 'string' },
@@ -250,6 +258,7 @@ export async function main(argv: string[]): Promise<number> {
       radius,
       theme,
       region: Boolean(flags['region']),
+      auto: Boolean(flags['auto']),
       ...(highlight ? { highlight } : {}),
       ...(flags['highlight-label'] ? { highlightLabel: flags['highlight-label'] as string } : {}),
       ...(flags['highlight-color'] ? { highlightColor: flags['highlight-color'] as string } : {}),

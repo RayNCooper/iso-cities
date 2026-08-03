@@ -77,6 +77,10 @@ interface NominatimResult {
   display_name?: string;
   address?: NominatimAddress;
   geojson?: GeoJsonGeometry;
+  /** Nominatim's hierarchy rank: 4 = country, 16 = city, 30 = a building. */
+  place_rank?: number;
+  /** [south, north, west, east], as strings. */
+  boundingbox?: string[];
 }
 
 export class GeocodeError extends Error {
@@ -254,6 +258,17 @@ function toPlace(result: NominatimResult, query: PlaceQuery): Place {
   if (result.type) place.type = result.type;
   const code = result.address?.country_code;
   if (code) place.countryCode = code.toUpperCase();
+  if (typeof result.place_rank === 'number') place.placeRank = result.place_rank;
+
+  const box = result.boundingbox;
+  if (Array.isArray(box) && box.length === 4) {
+    const [south, north, west, east] = box.map(Number);
+    if ([south, north, west, east].every((n) => Number.isFinite(n))) {
+      // Knowing how much ground a match covers before asking for its outline
+      // is what lets `auto` refuse a country without downloading its polygon.
+      place.boundingBox = { south: south!, north: north!, west: west!, east: east! };
+    }
+  }
   const boundary = geometryToPolygons(result.geojson);
   if (boundary) place.boundary = boundary;
   return place;

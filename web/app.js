@@ -27,10 +27,6 @@ const els = {
   region: $('region'),
   trees: $('trees'),
   shadows: $('shadows'),
-  advanced: $('advanced'),
-  highlight: $('highlight'),
-  center: $('center'),
-  centerRow: $('centerRow'),
   stage: $('stage'),
   loaderText: $('loaderText'),
   render: $('render'),
@@ -154,15 +150,13 @@ const syncOutputs = () => {
   els.widthOut.textContent = els.width.value;
 };
 
-// A region render is framed by its boundary, so the detail slider and the
-// centring option stop meaning anything. Show that rather than leaving
-// live-looking controls that quietly do nothing.
+// A region render is framed by its boundary, so the detail slider stops
+// meaning anything. Show that rather than leaving a live-looking control that
+// quietly does nothing.
 const syncRegion = () => {
   const off = els.region.checked;
   els.radius.disabled = off;
   els.radius.closest('label').classList.toggle('is-disabled', off);
-  els.center.disabled = off;
-  els.centerRow.classList.toggle('is-disabled', off);
 };
 
 /** Options that change the drawing but not the underlying map data. */
@@ -177,30 +171,22 @@ function renderOptions() {
 
 /** Options that decide what gets fetched and built. */
 function sceneOptions() {
-  const highlightText = els.highlight.value.trim();
-  const options = {
-    cache,
-    radius: Number(els.radius.value),
-    region: els.region.checked,
-    layers: { trees: els.trees.checked },
+  return {
+    options: {
+      cache,
+      radius: Number(els.radius.value),
+      // Let the match decide: a building gets picked out, a city gets a radius,
+      // anything larger gets its outline. The checkbox forces the outline.
+      auto: true,
+      region: els.region.checked,
+      layers: { trees: els.trees.checked },
+    },
   };
-  if (highlightText) {
-    options.highlight = { q: highlightText };
-    options.centerOnHighlight = els.center.checked;
-  }
-  return { options, highlightText };
 }
 
 /** Identity of the scene, so we know when a redraw is enough. */
 function keyFor(query, options) {
-  return JSON.stringify([
-    query.q,
-    options.radius,
-    options.region,
-    options.highlight?.q ?? null,
-    options.centerOnHighlight ?? false,
-    options.layers.trees,
-  ]);
+  return JSON.stringify([query.q, options.radius, options.region, options.layers.trees]);
 }
 
 function paint(width, height, pixels) {
@@ -229,15 +215,11 @@ function slugify(name) {
 
 /* --------------------------------------------------------------------- hash */
 
-function updateHash(query, highlightText) {
+function updateHash(query) {
   const params = new URLSearchParams({ q: query.q });
   if (els.region.checked) params.set('region', '1');
   else params.set('r', els.radius.value);
   if (theme !== DEFAULT_THEME) params.set('theme', theme);
-  if (highlightText) {
-    params.set('at', highlightText);
-    if (els.center.checked) params.set('center', '1');
-  }
   history.replaceState(null, '', `#${params.toString()}`);
 }
 
@@ -245,11 +227,6 @@ function applyHash() {
   if (!location.hash.length) return;
   const params = new URLSearchParams(location.hash.slice(1));
   if (params.get('q')) els.query.value = params.get('q');
-  if (params.get('at')) {
-    els.highlight.value = params.get('at');
-    els.advanced.open = true;
-  }
-  els.center.checked = params.get('center') === '1';
   if (params.get('theme') && THEME_NAMES.includes(params.get('theme'))) theme = params.get('theme');
   if (params.get('r')) els.radius.value = params.get('r');
   els.region.checked = params.get('region') === '1';
@@ -323,8 +300,8 @@ async function render(event) {
     setStatus('Type a place first.', true);
     return;
   }
-  const { options, highlightText } = sceneOptions();
-  updateHash(query, highlightText);
+  const { options } = sceneOptions();
+  updateHash(query);
 
   // Nothing about the map data changed — just draw it again.
   if (scene && keyFor(query, options) === sceneKey) {
@@ -442,6 +419,13 @@ els.region.addEventListener('change', syncRegion);
 // waits for the Render button, so dragging a slider cannot spam the API.
 els.width.addEventListener('change', () => scene && render());
 els.shadows.addEventListener('change', () => scene && render());
+
+for (const chip of document.querySelectorAll('.chip')) {
+  chip.addEventListener('click', () => {
+    els.query.value = chip.dataset.example;
+    render();
+  });
+}
 
 els.form.addEventListener('submit', render);
 

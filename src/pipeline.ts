@@ -13,7 +13,15 @@ import {
   type Boundary,
 } from './geo/boundary.js';
 import type { Bounds } from './geo/polygon.js';
-import { bboxAround, toLatLon, toLocal, type BBox, type LatLon, type Point } from './geo/project.js';
+import {
+  bboxAreaKm2,
+  bboxAround,
+  toLatLon,
+  toLocal,
+  type BBox,
+  type LatLon,
+  type Point,
+} from './geo/project.js';
 import type { CacheLike } from './net/cache.js';
 import { describeQuery, geocode, type GeocodeOptions, type PlaceQuery } from './net/nominatim.js';
 import { fetchOsmData, type OverpassOptions } from './net/overpass.js';
@@ -28,6 +36,46 @@ export const MAX_RADIUS_METRES = 4000;
 /** Above this the free Overpass API starts to struggle; we warn rather than refuse. */
 export const LARGE_REGION_KM2 = 25;
 
+/** place_rank at or below which a match is bigger than a city. */
+export const REGION_MAX_PLACE_RANK = 12;
+/** place_rank at or above which a match is one address, building or POI. */
+export const ADDRESS_MIN_PLACE_RANK = 28;
+/**
+ * The largest area `auto` will try to draw as a whole region.
+ *
+ * A county is already thousands of square kilometres and a country is
+ * hundreds of thousands — far more building data than the public Overpass API
+ * will ever serve. Past this, `auto` falls back to the centre and says so.
+ */
+export const AUTO_REGION_MAX_KM2 = 250;
+
+/**
+ * How much slack to allow when judging size from a bounding box alone.
+ *
+ * A box around a diagonal or coastal shape overstates it badly — Monaco's box
+ * is 262 km² for a country of about 2 — so the cheap pre-check is deliberately
+ * generous, and the real area is measured once the outline is in hand.
+ */
+export const BBOX_OVERESTIMATE_ALLOWANCE = 4;
+
+export type PlaceScale = 'region' | 'settlement' | 'address';
+
+/**
+ * How big a thing the geocoder matched, from its place_rank.
+ *
+ * Nominatim ranks results down a hierarchy — roughly 4 for a country, 8 for a
+ * state, 16 for a city, 26 for a street, 30 for a single building — which is
+ * exactly the signal needed to decide whether to draw an outline or a radius.
+ */
+export function placeScale(place: Place): PlaceScale {
+  // A match with no rank is treated as a settlement: the middle case, and the
+  // one whose framing is least surprising when the guess is wrong.
+  const rank = place.placeRank ?? 20;
+  if (rank <= REGION_MAX_PLACE_RANK) return 'region';
+  if (rank >= ADDRESS_MIN_PLACE_RANK) return 'address';
+  return 'settlement';
+}
+
 export interface PipelineOptions extends RenderOptions {
   /** Half-width of the square area to render, in metres. Ignored when `region` wins. */
   radius?: number;
@@ -37,6 +85,16 @@ export interface PipelineOptions extends RenderOptions {
    * the geocoder has no outline for the match (a street address, say).
    */
   region?: boolean;
+  /**
+   * Let the match decide the framing, so one input covers every case:
+   *
+   * - bigger than a city (county, state, country) -> its whole outline
+   * - a city, town, district or postcode -> a radius around its centre
+   * - a street or an address -> a radius around it, with the building picked out
+   *
+   * `region` still wins if it is set explicitly.
+   */
+  auto?: boolean;
   /**
    * An address to single out. Everything else is drawn in grey, and a pin is
    * placed on the building this resolves to.
@@ -101,14 +159,49 @@ export async function renderCityScene(
   const radius = clampRadius(options.radius ?? DEFAULT_RADIUS_METRES);
   const { cache, signal, onProgress } = options;
 
-  const matched = await geocode(query, {
+  const geocodeOptions = {
     ...options.geocode,
-    ...(options.region ? { boundary: true } : {}),
     ...(cache ? { cache } : {}),
     ...(signal ? { signal } : {}),
     ...(onProgress ? { onProgress } : {}),
+  };
+
+  // The first lookup deliberately does not ask for an outline. It is the
+  // cheap one, and its place_rank and bounding box are what decide whether an
+  // outline is wanted at all — so a country's polygon, which can run to many
+  // megabytes, is never downloaded just to be discarded.
+  let matched = await geocode(query, {
+    ...geocodeOptions,
+    ...(options.region === true ? { boundary: true } : {}),
   });
   onProgress?.(`Resolved to ${matched.displayName}`);
+
+  let wantRegion = options.region === true;
+  let highlightSelf = false;
+
+  if (options.auto && options.region !== true) {
+    const scale = placeScale(matched);
+    if (scale === 'region') {
+      const boxKm2 = matched.boundingBox ? bboxAreaKm2(matched.boundingBox) : Infinity;
+      if (boxKm2 <= AUTO_REGION_MAX_KM2 * BBOX_OVERESTIMATE_ALLOWANCE) {
+        // Worth asking for the outline; its true area is checked below.
+        wantRegion = true;
+      } else {
+        onProgress?.(
+          `${matched.name} spans roughly ${Math.round(boxKm2).toLocaleString()} km² — far more ` +
+            'building data than the public API will serve. Drawing its centre instead.',
+        );
+      }
+    } else if (scale === 'address') {
+      // An address is only worth drawing if you can see which building it is.
+      highlightSelf = true;
+    }
+  }
+
+  // Only now, knowing the outline is both wanted and a sane size, ask for it.
+  if (wantRegion && !matched.boundary) {
+    matched = await geocode(query, { ...geocodeOptions, boundary: true });
+  }
 
   // The highlight is resolved before the map data is fetched, because it may
   // decide where the bounding box goes.
@@ -140,8 +233,22 @@ export async function renderCityScene(
   }
 
   let boundary: Boundary | undefined;
-  if (options.region) {
+  if (wantRegion) {
     boundary = (place.boundary && projectBoundary(place.centre, place.boundary)) || undefined;
+    if (boundary) {
+      const km2 = boundaryArea(boundary) / 1_000_000;
+
+      // The bounding-box check above was only a cheap filter. Now that the real
+      // outline is here, measure it properly — a shape can be a small fraction
+      // of the box that contains it.
+      if (options.auto && options.region !== true && km2 > AUTO_REGION_MAX_KM2) {
+        onProgress?.(
+          `${place.name} covers ${Math.round(km2).toLocaleString()} km² — too much building ` +
+            'data for the public API. Drawing its centre instead.',
+        );
+        boundary = undefined;
+      }
+    }
     if (boundary) {
       const km2 = boundaryArea(boundary) / 1_000_000;
       onProgress?.(`Region outline: ${boundaryVertexCount(boundary)} vertices, ${km2.toFixed(1)} km²`);
@@ -170,6 +277,11 @@ export async function renderCityScene(
   });
 
   let highlight: { position: Point; label?: string } | undefined;
+  if (highlightSelf && !options.highlight && !boundary) {
+    // The match *is* the centre, so its local position is the origin.
+    highlight = { position: { x: 0, y: 0 }, label: matched.name };
+    onProgress?.(`Picking out ${matched.name}`);
+  }
   if (options.highlight && highlightTarget) {
     const label = options.highlightLabel ?? describeQuery(options.highlight);
     highlight = {

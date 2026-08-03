@@ -65,6 +65,22 @@ Themes live in `SPECS` in `src/render/palette.ts`. Add an entry with the dozen k
 
 Two tests will hold you to it automatically: every theme must define every road class and green kind, and label text must contrast with the sky by at least 40 units of luminance.
 
+## The demo page
+
+`web/` is the demo published to GitHub Pages. `npm run serve` builds and serves it on `localhost:8080`.
+
+It opens on a **baked scene** — `web/default-scene.json`, a real scene fetched once at build time and committed. Without it, every visit to the page would fire a geocode and an Overpass query just to draw the first picture, which is both slow and rude to volunteer-run infrastructure. The page loads it and draws with no network at all.
+
+The same script also produces the share card (`web/og.png`) and the touch icon, both rendered by the library itself, so the social preview is a genuine sample of the output rather than a mockup that can go stale.
+
+```bash
+npm run bake     # refetches the default scene, regenerates og.png and the icon
+```
+
+Run this **deliberately**, not as part of the normal build: it needs the network, and CI must not. Re-run it if you change the default view, the renderer's look, or the card wording.
+
+A note on how the page avoids refetching: `buildScene` and `renderScene` are separate steps, so the built scene is kept in memory next to a key describing the inputs that produced it. Changing the theme, size or shadows does not change that key, so it redraws instantly and offline; changing the place, detail or highlight does, and triggers a real fetch. If you add a control, decide which of those two it is and put it in `renderOptions()` or `sceneOptions()` accordingly.
+
 ## Improving tag coverage
 
 `src/osm/classify.ts` is where OSM's open-ended tagging becomes a small set of drawable categories. It deliberately keeps only what changes a pixel.

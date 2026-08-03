@@ -35,6 +35,7 @@ const els = {
   loaderText: $('loaderText'),
   render: $('render'),
   download: $('download'),
+  share: $('share'),
   status: $('status'),
   stats: $('stats'),
   canvas: $('canvas'),
@@ -258,11 +259,19 @@ function applyHash() {
 
 /* ------------------------------------------------------------------- render */
 
+function showStats(built, width, height) {
+  const { buildings, roads, areas, trees } = built.stats;
+  els.stats.textContent =
+    `${width}x${height} · ${buildings.toLocaleString()} buildings · ` +
+    `${roads.toLocaleString()} roads · ${areas.toLocaleString()} areas · ` +
+    `${trees.toLocaleString()} trees`;
+}
+
 /**
  * Redraws the scene already in memory. Synchronous and fast, so it only puts
  * the loader up for scenes big enough that the pause would be noticed.
  */
-async function redraw() {
+async function redraw(message) {
   const heavy = scene.stats.buildings > 15000;
   if (heavy) {
     startLoading();
@@ -272,8 +281,38 @@ async function redraw() {
   }
   const image = renderScene(scene, renderOptions());
   paint(image.width, image.height, image.raster.data);
-  setStatus(`${theme} — redrawn from map data already loaded`);
+  showStats(scene, image.width, image.height);
+  setStatus(message ?? `${theme} — redrawn from map data already loaded`);
   if (heavy) stopLoading();
+}
+
+/**
+ * Loads the scene baked at build time, so the opening view costs no API calls.
+ *
+ * It is treated exactly like a freshly fetched one — same `scene`/`sceneKey`
+ * pair — so switching theme on it stays instant, and changing the place still
+ * falls through to a real fetch.
+ */
+async function loadBakedScene() {
+  try {
+    const response = await fetch('./default-scene.json');
+    if (!response.ok) return false;
+    const { scene: baked, bakedFrom } = await response.json();
+    if (!baked?.stats) return false;
+
+    // The bake decides the opening form state, so the two cannot drift.
+    if (bakedFrom?.query?.q) els.query.value = bakedFrom.query.q;
+    if (bakedFrom?.radius) els.radius.value = String(bakedFrom.radius);
+    syncOutputs();
+
+    scene = baked;
+    lastPlaceName = baked.place?.name ?? 'city';
+    sceneKey = keyFor({ q: els.query.value.trim() }, sceneOptions().options);
+    return true;
+  } catch {
+    // Any problem here just means falling back to fetching, which still works.
+    return false;
+  }
 }
 
 async function render(event) {
@@ -320,11 +359,7 @@ async function render(event) {
 
     paint(result.imageData.width, result.imageData.height, result.imageData.data);
 
-    const { buildings, roads, areas, trees } = result.scene.stats;
-    els.stats.textContent =
-      `${result.imageData.width}x${result.imageData.height} · ` +
-      `${buildings.toLocaleString()} buildings · ${roads.toLocaleString()} roads · ` +
-      `${areas.toLocaleString()} areas · ${trees.toLocaleString()} trees`;
+    showStats(result.scene, result.imageData.width, result.imageData.height);
     setStatus(`Done — ${result.place.displayName}`);
   } catch (error) {
     if (controller.signal.aborted) return;
@@ -374,6 +409,31 @@ els.download.addEventListener('click', () => {
   }, 'image/png');
 });
 
+// Share the exact view, not just the site. The hash already carries every
+// setting, so the current URL is the shareable artefact.
+els.share.addEventListener('click', async () => {
+  const url = location.href;
+  const done = (label) => {
+    const original = 'Copy link';
+    els.share.textContent = label;
+    setTimeout(() => {
+      els.share.textContent = original;
+    }, 1800);
+  };
+  try {
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ title: document.title, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    done('Link copied');
+  } catch {
+    // Clipboard access can be refused; selecting the address bar is the
+    // fallback everyone already knows.
+    done('Copy from the address bar');
+  }
+});
+
 els.radius.addEventListener('input', syncOutputs);
 els.width.addEventListener('input', syncOutputs);
 els.region.addEventListener('change', syncRegion);
@@ -398,4 +458,14 @@ applyHash();
 buildThemeGrid();
 syncOutputs();
 syncRegion();
-render();
+
+// A share link asks for something specific, so honour it. Otherwise open on the
+// baked scene: no geocode, no Overpass query, nothing asked of anyone's server
+// just to draw the first picture.
+if (location.hash.length > 1) {
+  render();
+} else if (await loadBakedScene()) {
+  await redraw(`${scene.place.displayName} — ready, no network needed`);
+} else {
+  render();
+}

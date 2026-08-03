@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rayncooper.github.io/iso-cities/sitemap.xml

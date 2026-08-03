@@ -125,6 +125,17 @@ export {
   type Boundary,
 } from './geo/boundary.js';
 export { Raster, rasterizeMask, type ScreenPoint, type Shader } from './render/raster.js';
+export {
+  drawText,
+  measureText,
+  glyphCoverage,
+  GLYPH_WIDTH,
+  GLYPH_HEIGHT,
+  ASCENDER_ROWS,
+  type TextOptions,
+} from './render/font.js';
+export { hex, toHex, mix, shade, lighten, darken, luminance, type RGB } from './render/color.js';
+
 export { createProjector, layoutFor, squareExtent, type Projector } from './render/iso.js';
 export {
   bboxAround,

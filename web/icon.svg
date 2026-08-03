@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="iso-cities">
+  <rect width="32" height="32" rx="7" fill="#4f46e5" />
+  <!-- One isometric block, matching the loader and the touch icon. -->
+  <polygon points="7,15 16,19.5 16,27.5 7,23" fill="#8b93f0" />
+  <polygon points="25,15 16,19.5 16,27.5 25,23" fill="#6d76e8" />
+  <polygon points="16,10.5 25,15 16,19.5 7,15" fill="#e0e7ff" />
+</svg>

@@ -38,6 +38,7 @@
     "test": "node scripts/run-tests.mjs",
     "start": "npm run build && node dist/cli.js",
     "build:site": "npm run build && node scripts/build-site.mjs",
+    "bake": "npm run build && node scripts/bake-default-scene.mjs",
     "serve": "npm run build:site && node scripts/serve.mjs",
     "prepublishOnly": "npm run clean && npm run build"
   },

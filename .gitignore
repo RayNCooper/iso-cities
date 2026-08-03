@@ -5,11 +5,13 @@ _site/
 .playwright-mcp/
 *.tsbuildinfo
 
-# Local render output
+# Local render output. Renders are throwaway by default; the ones that are part
+# of the project — README examples and the site's own assets — are exceptions.
 out/
 *.png
 !examples/*.png
 !docs/**/*.png
+!web/*.png
 
 # Caches
 .cache/

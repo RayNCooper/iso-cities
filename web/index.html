@@ -3,15 +3,72 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>iso-cities — any city as isometric pixel art</title>
+    <title>iso-cities — turn any city into isometric pixel art</title>
     <meta
       name="description"
-      content="Turn any city or postal code into an isometric pixel-art city, rendered live from OpenStreetMap data in your browser."
+      content="Type a city, a postal code or an address and get it back as isometric pixel art, built from real OpenStreetMap buildings. Twelve themes, whole-region outlines, free and open source. Runs entirely in your browser."
     />
+    <link rel="canonical" href="https://rayncooper.github.io/iso-cities/" />
     <meta name="theme-color" content="#4f46e5" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%8F%99%EF%B8%8F</text></svg>" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Share card. The image is a genuine render produced by the library at
+         build time, not a mockup, so it cannot drift from the real output. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="iso-cities" />
+    <meta property="og:url" content="https://rayncooper.github.io/iso-cities/" />
+    <meta property="og:title" content="iso-cities — turn any city into isometric pixel art" />
+    <meta
+      property="og:description"
+      content="Type a city, a postal code or an address and get it back as isometric pixel art, built from real OpenStreetMap buildings. Twelve themes, runs entirely in your browser."
+    />
+    <meta property="og:image" content="https://rayncooper.github.io/iso-cities/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="An isometric pixel-art rendering of the Reichstag and the Tiergarten in Berlin."
+    />
+    <meta property="og:locale" content="en_GB" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="iso-cities — turn any city into isometric pixel art" />
+    <meta
+      name="twitter:description"
+      content="Type a city, a postal code or an address and get it back as isometric pixel art, built from real OpenStreetMap buildings."
+    />
+    <meta name="twitter:image" content="https://rayncooper.github.io/iso-cities/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="An isometric pixel-art rendering of the Reichstag and the Tiergarten in Berlin."
+    />
+
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "iso-cities",
+        "url": "https://rayncooper.github.io/iso-cities/",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any, runs in a web browser",
+        "browserRequirements": "Requires JavaScript and a modern browser",
+        "description": "Turn any city, postal code or address into isometric pixel art, rendered from OpenStreetMap data entirely in the browser.",
+        "image": "https://rayncooper.github.io/iso-cities/og.png",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "author": { "@type": "Organization", "name": "Olio", "url": "https://olio.solutions" },
+        "codeRepository": "https://github.com/RayNCooper/iso-cities",
+        "keywords": "isometric, pixel art, OpenStreetMap, map, generative art, cartography"
+      }
+    </script>
   </head>
   <body>
     <header class="masthead">
@@ -36,7 +93,7 @@
             <input
               id="query"
               type="text"
-              value="Porto"
+              value="Reichstag, Berlin"
               placeholder="Kreuzberg, Berlin — or a postcode"
               required
             />
@@ -134,6 +191,7 @@
 
       <div class="row actions">
         <button id="download" type="button" disabled>Download PNG</button>
+        <button id="share" type="button">Copy link</button>
         <span id="stats" class="stats"></span>
       </div>
 

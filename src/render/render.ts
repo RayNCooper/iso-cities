@@ -83,9 +83,8 @@ export interface RenderOptions {
   /** Draw a pin above the highlighted point. On by default when one exists. */
   marker?: boolean;
   /**
-   * Drain colour from everything except the highlight. Defaults to full
-   * desaturation when the scene has a highlight, and none when it does not.
-   * A number between 0 and 1 sets the strength.
+   * Drain colour from everything except the highlight. Off by default; `true`
+   * is full desaturation, or give a number between 0 and 1 for partial.
    */
   desaturate?: boolean | number;
 }
@@ -111,18 +110,11 @@ export function renderScene(scene: Scene, options: RenderOptions = {}): Rendered
   const windows = options.windows ?? true;
   const outlines = options.outlines ?? true;
 
-  // A highlight implies a grey city around it, unless told otherwise.
-  const hasHighlight = Boolean(scene.highlight);
+  // Off unless explicitly asked for. A highlight used to imply it, but draining
+  // the colour out of the map to make one building stand out costs more than it
+  // buys — the accent already reads clearly against a full-colour city.
   const desaturation =
-    options.desaturate === undefined
-      ? hasHighlight
-        ? 1
-        : 0
-      : options.desaturate === true
-        ? 1
-        : options.desaturate === false
-          ? 0
-          : options.desaturate;
+    options.desaturate === true ? 1 : options.desaturate === false || options.desaturate === undefined ? 0 : options.desaturate;
   const theme = desaturation > 0 ? desaturateTheme(requested, desaturation) : requested;
   const accent = resolveAccent(options.highlightColor);
 

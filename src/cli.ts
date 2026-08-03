@@ -53,8 +53,8 @@ REGION
                            falls back to --radius if the match has no outline.
 
 HIGHLIGHT
-      --highlight <addr>   Single out an address: everything else turns grey
-                           and a pin is dropped on the matching building
+      --highlight <addr>   Single out an address: the matching building takes
+                           the accent colour and a pin is dropped on it
       --highlight-lat <d>  Highlight an exact coordinate instead
       --highlight-lon <d>
       --highlight-label <t>  Label to draw for it (default: the query text)
@@ -62,7 +62,7 @@ HIGHLIGHT
       --center-on-highlight  Frame the render on the address instead of the
                            matched place, keeping --radius around it
       --no-marker          Skip the pin, colour the building only
-      --no-desaturate      Keep everything in colour, just accent the match
+      --desaturate         Drain colour from everything but the highlight
 
 FRAMING
   -r, --radius <metres>    Half-width of the area to draw (default: ${DEFAULT_RADIUS_METRES}, ${MIN_RADIUS_METRES}-${MAX_RADIUS_METRES})
@@ -144,7 +144,7 @@ export async function main(argv: string[]): Promise<number> {
         'center-on-highlight': { type: 'boolean' },
         'centre-on-highlight': { type: 'boolean' },
         'no-marker': { type: 'boolean' },
-        'no-desaturate': { type: 'boolean' },
+        desaturate: { type: 'boolean' },
 
         radius: { type: 'string', short: 'r' },
         width: { type: 'string', short: 'w' },
@@ -255,7 +255,7 @@ export async function main(argv: string[]): Promise<number> {
       ...(flags['highlight-color'] ? { highlightColor: flags['highlight-color'] as string } : {}),
       centerOnHighlight: Boolean(flags['center-on-highlight'] || flags['centre-on-highlight']),
       marker: !flags['no-marker'],
-      ...(flags['no-desaturate'] ? { desaturate: false } : {}),
+      ...(flags['desaturate'] ? { desaturate: true } : {}),
       width: numberFlag(flags, 'width', 1024),
       ...(flags['height'] ? { height: numberFlag(flags, 'height', 0) } : {}),
       scale: numberFlag(flags, 'scale', 2),

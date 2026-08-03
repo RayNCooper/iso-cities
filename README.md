@@ -60,7 +60,7 @@ iso-cities "Porto" --radius 200 --scale 4 -o porto.png
 # The real shape of a postcode district, not a square
 iso-cities --postcode 10115 --country DE --region
 
-# ...with one address picked out and everything else in grey
+# ...with one address picked out in an accent colour
 iso-cities --postcode 10115 --country DE --region \
            --highlight "Museum für Naturkunde, Berlin"
 ```
@@ -110,7 +110,7 @@ At municipal scale individual buildings fall below a pixel, so outlines are drop
 
 ## Highlighting an address
 
-`--highlight` singles out one address: the city around it drains to grey, the matching building is painted in an accent colour, and a pin is dropped on it.
+`--highlight` singles out one address: the matching building is painted in an accent colour and a pin is dropped on it. The rest of the city keeps its colour — the accent reads clearly without draining everything else, though `--desaturate` will do that if you want it.
 
 ```bash
 iso-cities --postcode 10115 --country DE --region \
@@ -121,7 +121,7 @@ iso-cities "Porto" --highlight-lat 41.1408 --highlight-lon -8.6120 \
            --highlight-color '#00d4ff'
 ```
 
-![The Naturkundemuseum picked out in a grey Berlin 10115](examples/berlin-highlight.png)
+![The Naturkundemuseum picked out inside postcode 10115](examples/berlin-highlight.png)
 
 The address is geocoded, then matched to the building whose footprint contains it. Address nodes in OSM often sit on the pavement or at a plot entrance rather than inside the building, so a miss falls back to the nearest building within 75 m — far enough to catch those, close enough not to silently grab one across the street. The console reports which of the two happened, and the highlighted address becomes the image's subtitle.
 
@@ -135,7 +135,7 @@ The pin is sized from the canvas rather than from world units, so it stays finda
 | `--highlight-label <text>` | Override the drawn label |
 | `--highlight-color <hex>` | Accent colour (default `#ff4a2b`) |
 | `--no-marker` | Colour the building but skip the pin |
-| `--no-desaturate` | Keep the city in colour, just accent the match |
+| `--desaturate` | Drain the colour from everything but the match |
 
 ### Centring on the address
 
@@ -146,13 +146,13 @@ iso-cities "Berlin" --highlight "Museum für Naturkunde" \
            --center-on-highlight --radius 250
 ```
 
-![The Naturkundemuseum centred in 250 m of grey Berlin](examples/berlin-centred.png)
+![The Naturkundemuseum centred in 250 m of Berlin](examples/berlin-centred.png)
 
 `--centre-on-highlight` works too. The flag has no effect with `--region`, where the boundary decides the framing — you get a warning rather than silence.
 
 ## Themes
 
-`iso-cities --themes` lists them. Six ship in the box:
+`iso-cities --themes` lists them. Twelve ship in the box:
 
 | Theme | Look |
 | --- | --- |
@@ -161,6 +161,12 @@ iso-cities "Berlin" --highlight "Museum für Naturkunde" \
 | `night` | Deep night, windows glowing, streets barely lit |
 | `noir` | Greyscale, high contrast |
 | `gameboy` | The original four-tone DMG palette, and nothing else |
+| `blueprint` | White line-work on drafting blue, like a site plan |
+| `sepia` | Aged paper and brown ink, like a survey from 1890 |
+| `neon` | Synthwave after midnight — mostly dark, selectively lit |
+| `autumn` | Late October, turning leaves and low warm light |
+| `arctic` | Snow on the ground and a pale winter sky |
+| `newsprint` | Four tones of grey ink, like a broadsheet diagram |
 | `candy` | Soft pastels, toy-town colours |
 
 Venice at dusk and in Game Boy green, same query, same seed:

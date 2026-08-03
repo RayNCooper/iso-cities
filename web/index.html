@@ -19,10 +19,10 @@
         <h1>iso&#8209;cities</h1>
         <p class="tagline">
           Any city or postal code, drawn as isometric pixel art from real OpenStreetMap data.
-          Everything below runs in your browser — no server, nothing uploaded.
+          Everything runs in your browser — no server, nothing uploaded.
         </p>
         <p class="links">
-          <a class="link-primary" href="https://github.com/RayNCooper/iso-cities">Source on GitHub</a>
+          <a href="https://github.com/RayNCooper/iso-cities">Source on GitHub</a>
           <a href="https://www.npmjs.com/package/iso-cities">npm</a>
         </p>
       </div>
@@ -44,49 +44,56 @@
           <button id="render" type="submit">Render</button>
         </div>
 
-        <div class="row">
-          <label class="grow-sm">
-            <span>Theme</span>
-            <select id="theme"></select>
-          </label>
+        <div class="field">
+          <span class="field-label">
+            Theme
+            <em id="themeHint">switching is instant — no new download</em>
+          </span>
+          <div id="themeGrid" class="theme-grid" role="radiogroup" aria-label="Theme"></div>
+        </div>
+
+        <div class="row sliders">
           <label>
-            <span>Radius <output id="radiusOut">400</output> m</span>
+            <span>Detail <output id="radiusOut">400</output> m across</span>
             <input id="radius" type="range" min="80" max="1200" step="20" value="400" />
           </label>
           <label>
-            <span>Width <output id="widthOut">900</output> px</span>
+            <span>Size <output id="widthOut">900</output> px</span>
             <input id="width" type="range" min="400" max="1600" step="100" value="900" />
           </label>
+          <div class="toggle-cluster">
+            <label class="check">
+              <input id="region" type="checkbox" />
+              <span>Whole region</span>
+            </label>
+            <label class="check">
+              <input id="trees" type="checkbox" checked />
+              <span>Trees</span>
+            </label>
+            <label class="check">
+              <input id="shadows" type="checkbox" checked />
+              <span>Shadows</span>
+            </label>
+          </div>
         </div>
 
-        <div class="row toggles">
-          <label class="check">
-            <input id="region" type="checkbox" />
-            <span>Whole region shape</span>
-          </label>
-          <label class="check">
-            <input id="trees" type="checkbox" checked />
-            <span>Trees</span>
-          </label>
-          <label class="check">
-            <input id="shadows" type="checkbox" checked />
-            <span>Shadows</span>
-          </label>
-        </div>
-
-        <div class="row">
-          <label class="grow">
-            <span>Highlight an address (optional)</span>
-            <input id="highlight" type="text" placeholder="Museum für Naturkunde, Berlin" />
-          </label>
-        </div>
-
-        <div class="row toggles">
-          <label class="check" id="centerRow">
-            <input id="center" type="checkbox" />
-            <span>Centre the view on that address, not the place</span>
-          </label>
-        </div>
+        <details class="advanced" id="advanced">
+          <summary>Highlight an address</summary>
+          <div class="advanced-body">
+            <div class="row">
+              <label class="grow">
+                <span>Address</span>
+                <input id="highlight" type="text" placeholder="Museum für Naturkunde, Berlin" />
+              </label>
+            </div>
+            <div class="row toggles">
+              <label class="check" id="centerRow">
+                <input id="center" type="checkbox" />
+                <span>Centre the view on that address, not the place</span>
+              </label>
+            </div>
+          </div>
+        </details>
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite">Ready.</p>
@@ -139,15 +146,15 @@
           part of the library; no canvas drawing API is involved beyond handing over finished pixels.
         </p>
         <p>
-          A smaller radius means more pixels per metre, so buildings get chunkier and windows
-          appear. Larger areas mean a lot more map data — the public Overpass API is the slow part,
-          not the renderer.
+          Map data is fetched once and kept, so changing the theme, the size or the shadows
+          re-renders from what is already in memory. Only the place, the detail level and the
+          highlight need a new download.
         </p>
         <p class="credit">
           Map data ©
           <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, licensed
           under the ODbL. Images you save keep that credit drawn in. Please be gentle with the
-          public APIs — requests are rate limited to one per second and cached in memory.
+          public APIs — requests are rate limited to one per second.
         </p>
       </section>
 

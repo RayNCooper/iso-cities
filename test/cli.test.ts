@@ -92,7 +92,7 @@ test('non-numeric coordinates are rejected', async () => {
 });
 
 test('an unknown theme is rejected before any network call', async () => {
-  const result = await run(['Berlin', '--theme', 'sepia']);
+  const result = await run(['Berlin', '--theme', 'definitely-not-a-theme']);
   assert.equal(result.code, 2);
   assert.match(result.stderr, /Unknown theme/);
 });
@@ -146,7 +146,7 @@ test('--region and --highlight appear in the help', async () => {
   const help = await run(['--help']);
   assert.match(help.stdout, /--region/);
   assert.match(help.stdout, /--highlight <addr>/);
-  assert.match(help.stdout, /--no-desaturate/);
+  assert.match(help.stdout, /--desaturate/);
 });
 
 test('slugify produces safe, readable filenames', () => {

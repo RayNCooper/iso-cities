@@ -279,7 +279,7 @@ test('label colour contrasts with the sky in every theme', () => {
 });
 
 test('getTheme rejects unknown names with a helpful message', () => {
-  assert.throws(() => getTheme('sepia'), /Unknown theme "sepia"\. Available: /);
+  assert.throws(() => getTheme('definitely-not-a-theme'), /Unknown theme "definitely-not-a-theme"\. Available: /);
 });
 
 /* -------------------------------------------------------------------------- */
@@ -590,12 +590,17 @@ test('a region render confines the ground to the boundary shape', () => {
   assert.ok(coverage > 0.05 && coverage < 0.75, `unexpected ground coverage: ${coverage.toFixed(2)}`);
 });
 
-test('a highlight turns the city grey and paints one building in the accent', () => {
+test('desaturate turns the city grey and leaves one building in the accent', () => {
   const scene = testScene();
   scene.buildings[0]!.highlighted = true;
   scene.highlight = { position: scene.buildings[0]!.centroid, buildingId: 'w1', distance: 0 };
 
-  const image = renderScene(scene, { width: 320, scale: 1, highlightColor: '#ff0000' });
+  const image = renderScene(scene, {
+    width: 320,
+    scale: 1,
+    highlightColor: '#ff0000',
+    desaturate: true,
+  });
 
   let accentish = 0;
   let coloured = 0;
@@ -610,14 +615,31 @@ test('a highlight turns the city grey and paints one building in the accent', ()
   assert.ok(coloured < accentish, `the rest of the scene should be grey, found ${coloured} colour pixels`);
 });
 
-test('--no-desaturate keeps the scene in colour alongside the accent', () => {
+test('a highlight leaves the rest of the city in colour by default', () => {
   const scene = testScene();
   scene.buildings[0]!.highlighted = true;
   scene.highlight = { position: scene.buildings[0]!.centroid, buildingId: 'w1', distance: 0 };
 
-  const grey = renderScene(scene, { width: 320, scale: 1 });
-  const colour = renderScene(scene, { width: 320, scale: 1, desaturate: false });
-  assert.notDeepEqual([...grey.raster.data], [...colour.raster.data]);
+  const plain = renderScene(scene, { width: 320, scale: 1 });
+  const explicitlyOff = renderScene(scene, { width: 320, scale: 1, desaturate: false });
+  const grey = renderScene(scene, { width: 320, scale: 1, desaturate: true });
+
+  assert.deepEqual(
+    [...plain.raster.data],
+    [...explicitlyOff.raster.data],
+    'the default must be no desaturation at all',
+  );
+  assert.notDeepEqual([...plain.raster.data], [...grey.raster.data]);
+
+  // Plenty of hue should survive in the default render.
+  let coloured = 0;
+  for (let i = 0; i < plain.raster.data.length; i += 4) {
+    const r = plain.raster.data[i]!;
+    const g = plain.raster.data[i + 1]!;
+    const b = plain.raster.data[i + 2]!;
+    if (Math.abs(r - g) > 12 || Math.abs(g - b) > 12) coloured++;
+  }
+  assert.ok(coloured > 5000, `expected a colourful render, found ${coloured} colour pixels`);
 });
 
 test('the marker is drawn even when the highlight matched no building', () => {

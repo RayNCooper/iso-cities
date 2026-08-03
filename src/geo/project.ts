@@ -73,6 +73,19 @@ export function formatBBox(b: BBox): string {
   return `${f(b.south)},${f(b.west)},${f(b.north)},${f(b.east)}`;
 }
 
+/**
+ * Approximate area of a bounding box in square kilometres.
+ *
+ * Used to size the Overpass request: asking a busy server for far more memory
+ * than the query needs is a good way to be queued and then time out.
+ */
+export function bboxAreaKm2(box: BBox): number {
+  const midLat = ((box.north + box.south) / 2) * (Math.PI / 180);
+  const height = (box.north - box.south) * 111.32;
+  const width = (box.east - box.west) * 111.32 * Math.cos(midLat);
+  return Math.max(0, height * width);
+}
+
 /** Great-circle distance in metres (haversine). Used for sanity checks. */
 export function haversine(a: LatLon, b: LatLon): number {
   const R = 6_371_008.8;

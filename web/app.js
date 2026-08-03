@@ -181,14 +181,18 @@ async function render(event) {
 
 function describe(error) {
   const message = error instanceof Error ? error.message : String(error);
-  if (/No match for/i.test(message)) {
-    return `${message}`;
+  if (/No match for/i.test(message)) return message;
+
+  // A 504 from Overpass means its queue is full, not that anything is wrong
+  // with the query — so say "busy, retry" rather than "make it smaller".
+  if (/50[34]|busy|rate limited/i.test(message)) {
+    return 'The public Overpass servers are busy right now (they queue by memory, so big areas wait longest). Try again in a moment, or reduce the radius.';
   }
   if (/Could not fetch map data|Overpass/i.test(message)) {
     return 'Overpass could not serve that area. Try a smaller radius, or again in a moment.';
   }
   if (/Failed to fetch|NetworkError/i.test(message)) {
-    return 'Network request failed — the public API may be rate limiting. Wait a few seconds.';
+    return 'Network request failed — the public API may be rate limiting. Wait a few seconds and retry.';
   }
   return message;
 }

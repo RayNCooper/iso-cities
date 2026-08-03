@@ -53,7 +53,8 @@ This tool queries two pieces of free, volunteer-run infrastructure. Both have us
 | No more than 1 request/second | Enforced per host, with a serialised queue |
 | Cache aggressively | Responses cached on disk for 7 days (30 for geocoding) |
 | Back off on errors | Exponential backoff, and `Retry-After` is honoured |
-| Do not hammer a single mirror | Three Overpass mirrors, tried in order |
+| Do not hammer a single mirror | Three Overpass backends, tried in order |
+| Do not ask for more than you need | Request memory scales with the area covered |
 
 ### What you should do
 
@@ -64,6 +65,15 @@ This tool queries two pieces of free, volunteer-run infrastructure. Both have us
 - **Leave the cache on.** Re-rendering the same place in six themes should cost one query, not six. It does, unless you pass `--no-cache`.
 - **Do not bulk-render.** Looping over thousands of postcodes against the public API is exactly the abuse these policies exist to prevent.
 - **Run your own instance** if you need volume: [Overpass installation guide](https://wiki.openstreetmap.org/wiki/Overpass_API/Installation), then point at it with `--overpass-url` or `ISO_CITIES_OVERPASS_URL`.
+
+### If you point at your own mirrors
+
+Overpass hands out slots by requested memory, so a query that asks for half a gigabyte to draw four city blocks waits behind every large job on the server. That queue is where `504 Gateway Timeout` comes from. This tool scales `maxsize` and `timeout` to the area covered, which keeps small renders in the fast lane.
+
+Two things to check before adding a mirror to `--overpass-url`:
+
+- **Is it planet-wide?** Regional extracts answer `200` with zero elements outside their coverage, which renders as a blank image rather than an error. The tool treats an empty result as suspicious and asks another mirror before believing it, but only if you have given it another to ask.
+- **Does it fail fast?** An instance that accepts the connection and then never replies burns the entire timeout before failover, which is worse than one that is plainly down.
 
 ### Environment variables
 

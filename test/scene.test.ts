@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { geometryToPolygons, projectBoundary } from '../src/geo/boundary.js';
 import { buildScene } from '../src/scene/build.js';
 import type { OverpassElement, OverpassResponse } from '../src/osm/types.js';
 import type { Place } from '../src/types.js';
@@ -254,4 +255,124 @@ test('areas are ordered largest first so small parks land on top', () => {
 test('the scene carries the required OpenStreetMap attribution', () => {
   const scene = buildScene(response([]), { place: PLACE, radius: 100 });
   assert.match(scene.attribution, /OpenStreetMap contributors/);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Region boundaries                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** A boundary covering only the western half of the test area. */
+function westernHalf() {
+  const ring = [ll(-200, -200), ll(0, -200), ll(0, 200), ll(-200, 200)].map((p) => [p.lon, p.lat]);
+  return projectBoundary(PLACE.centre, geometryToPolygons({ type: 'Polygon', coordinates: [ring] })!)!;
+}
+
+test('a boundary keeps buildings inside it and drops those outside', () => {
+  const boundary = westernHalf();
+  const scene = buildScene(
+    response([
+      closedWay(1, { building: 'yes' }, box(-100, 0, 10)),
+      closedWay(2, { building: 'yes' }, box(100, 0, 10)),
+    ]),
+    { place: PLACE, radius: 400, boundary },
+  );
+
+  assert.equal(scene.buildings.length, 1);
+  assert.equal(scene.buildings[0]!.id, 'w1');
+  assert.ok(scene.boundary, 'the boundary travels with the scene for the renderer');
+});
+
+test('a boundary keeps trees inside it', () => {
+  const boundary = westernHalf();
+  const scene = buildScene(
+    response([
+      closedWay(1, { landuse: 'forest' }, box(-100, 0, 60)),
+      closedWay(2, { landuse: 'forest' }, box(100, 0, 60)),
+      { type: 'node', id: 3, tags: { natural: 'tree' }, ...ll(150, 0) },
+    ]),
+    { place: PLACE, radius: 400, boundary, seed: 2 },
+  );
+
+  assert.ok(scene.trees.length > 0);
+  for (const tree of scene.trees) {
+    assert.ok(tree.position.x <= 0.001, `tree at x=${tree.position.x} escaped the boundary`);
+  }
+});
+
+test('flat features are left for the renderer to mask, not dropped here', () => {
+  const boundary = westernHalf();
+  const scene = buildScene(
+    response([
+      openWay(1, { highway: 'primary' }, [
+        [-150, 0],
+        [150, 0],
+      ]),
+    ]),
+    { place: PLACE, radius: 400, boundary },
+  );
+  // The road survives whole; the ground mask cuts it exactly at render time.
+  assert.equal(scene.roads.length, 1);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Highlight                                                                  */
+/* -------------------------------------------------------------------------- */
+
+test('a highlight inside a footprint marks that building', () => {
+  const scene = buildScene(
+    response([
+      closedWay(1, { building: 'yes' }, box(0, 0, 20)),
+      closedWay(2, { building: 'yes' }, box(200, 0, 20)),
+    ]),
+    { place: PLACE, radius: 400, highlight: { position: { x: 5, y: 5 }, label: 'Somewhere 1' } },
+  );
+
+  assert.equal(scene.highlight?.buildingId, 'w1');
+  assert.equal(scene.highlight?.distance, 0);
+  assert.equal(scene.highlight?.label, 'Somewhere 1');
+  assert.equal(scene.buildings.find((b) => b.id === 'w1')?.highlighted, true);
+  assert.notEqual(scene.buildings.find((b) => b.id === 'w2')?.highlighted, true);
+});
+
+test('a highlight just outside a footprint snaps to the nearest building', () => {
+  // Address nodes often sit on the pavement rather than inside the building.
+  const scene = buildScene(response([closedWay(1, { building: 'yes' }, box(0, 0, 20))]), {
+    place: PLACE,
+    radius: 400,
+    highlight: { position: { x: 32, y: 0 } },
+  });
+
+  assert.equal(scene.highlight?.buildingId, 'w1');
+  assert.ok((scene.highlight?.distance ?? 0) > 0);
+});
+
+test('a highlight far from anything snaps to nothing', () => {
+  const scene = buildScene(response([closedWay(1, { building: 'yes' }, box(0, 0, 20))]), {
+    place: PLACE,
+    radius: 400,
+    highlight: { position: { x: 300, y: 300 } },
+  });
+
+  assert.equal(scene.highlight?.buildingId, undefined);
+  assert.ok(scene.highlight, 'the point is still recorded so the marker can be drawn');
+  assert.notEqual(scene.buildings[0]!.highlighted, true);
+});
+
+test('a highlight outside the boundary cannot claim a building inside it', () => {
+  const boundary = westernHalf();
+  const scene = buildScene(response([closedWay(1, { building: 'yes' }, box(-100, 0, 10))]), {
+    place: PLACE,
+    radius: 400,
+    boundary,
+    highlight: { position: { x: 190, y: 0 } },
+  });
+  assert.equal(scene.highlight?.buildingId, undefined);
+});
+
+test('no highlight option means no highlight on the scene', () => {
+  const scene = buildScene(response([closedWay(1, { building: 'yes' }, box(0, 0, 20))]), {
+    place: PLACE,
+    radius: 400,
+  });
+  assert.equal(scene.highlight, undefined);
 });

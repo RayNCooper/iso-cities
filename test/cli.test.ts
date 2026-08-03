@@ -102,6 +102,37 @@ test('an unknown flag is rejected with usage guidance', async () => {
   assert.match(result.stderr, /--help/);
 });
 
+test('--highlight-lat without --highlight-lon is rejected', async () => {
+  const result = await run(['Berlin', '--highlight-lat', '52.5']);
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /must be given together/);
+});
+
+test('non-numeric highlight coordinates are rejected', async () => {
+  const result = await run(['Berlin', '--highlight-lat', 'here', '--highlight-lon', '13']);
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /must be numbers/);
+});
+
+test('an empty --highlight is rejected', async () => {
+  const result = await run(['Berlin', '--highlight', '   ']);
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /needs an address/);
+});
+
+test('highlight styling flags without a highlight are rejected', async () => {
+  const result = await run(['Berlin', '--highlight-color', '#ff0000']);
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /need --highlight/);
+});
+
+test('--region and --highlight appear in the help', async () => {
+  const help = await run(['--help']);
+  assert.match(help.stdout, /--region/);
+  assert.match(help.stdout, /--highlight <addr>/);
+  assert.match(help.stdout, /--no-desaturate/);
+});
+
 test('slugify produces safe, readable filenames', () => {
   assert.equal(slugify('Berlin'), 'berlin');
   assert.equal(slugify('10115 Berlin'), '10115-berlin');

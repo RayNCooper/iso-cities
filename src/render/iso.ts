@@ -75,27 +75,66 @@ export interface Layout {
   originY: number;
 }
 
+/** The four corners of the square of `radius` metres around the origin. */
+export function squareExtent(radius: number): Point[] {
+  return [
+    { x: -radius, y: -radius },
+    { x: radius, y: -radius },
+    { x: radius, y: radius },
+    { x: -radius, y: radius },
+  ];
+}
+
+/**
+ * Screen dimensions and scale that fit a set of world points, plus headroom
+ * above them for the tallest thing standing on the ground.
+ *
+ * Fitting arbitrary points rather than assuming a square is what lets a render
+ * take the shape of a postcode district: an irregular outline gets framed just
+ * as tightly, with no wasted margin.
+ *
+ * The scale is found by projecting at unit scale first, measuring the result,
+ * then solving for the factor that makes it fill the requested width.
+ */
 export function layoutFor(options: {
-  radius: number;
+  /** World points that must be visible. Defaults to the square for `radius`. */
+  extent?: Point[];
+  radius?: number;
   width: number;
   margin: number;
   maxHeight: number;
   verticalExaggeration: number;
   height?: number;
 }): Layout {
-  const { radius, width, margin, maxHeight, verticalExaggeration } = options;
+  const { width, margin, maxHeight, verticalExaggeration } = options;
+  const extent =
+    options.extent && options.extent.length > 0 ? options.extent : squareExtent(options.radius ?? 400);
+
+  let minSX = Infinity;
+  let maxSX = -Infinity;
+  let minSY = Infinity;
+  let maxSY = -Infinity;
+  for (const p of extent) {
+    const sx = p.x - p.y;
+    const sy = (p.x + p.y) * 0.5;
+    if (sx < minSX) minSX = sx;
+    if (sx > maxSX) maxSX = sx;
+    if (sy < minSY) minSY = sy;
+    if (sy > maxSY) maxSY = sy;
+  }
+
+  const rawWidth = Math.max(1e-6, maxSX - minSX);
+  const rawHeight = Math.max(1e-6, maxSY - minSY);
   const usable = Math.max(16, width - margin * 2);
-  const scale = usable / (4 * radius);
-  const diamondHeight = usable / 2;
-  const headroom = Math.ceil(maxHeight * scale * verticalExaggeration);
-  const height = options.height ?? Math.ceil(diamondHeight + headroom + margin * 2);
+  const scale = usable / rawWidth;
+  const headroom = Math.ceil(Math.max(0, maxHeight) * scale * verticalExaggeration);
+  const height = options.height ?? Math.ceil(rawHeight * scale + headroom + margin * 2);
+
   return {
     width: Math.round(width),
     height: Math.round(height),
     scale,
-    // Centre of the world square sits horizontally centred, and vertically
-    // just below the headroom reserved for tall buildings.
-    originX: Math.round(width / 2),
-    originY: Math.round(margin + headroom + diamondHeight / 2),
+    originX: Math.round(margin - minSX * scale),
+    originY: Math.round(margin + headroom - minSY * scale),
   };
 }

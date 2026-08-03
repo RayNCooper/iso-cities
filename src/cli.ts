@@ -14,6 +14,7 @@ import { ResponseCache, defaultCacheDir } from './net/cache.js';
 import { GeocodeError, type PlaceQuery } from './net/nominatim.js';
 import { OverpassError } from './net/overpass.js';
 import { DEFAULT_THEME, THEMES, THEME_NAMES } from './render/palette.js';
+import { DEFAULT_HIGHLIGHT_COLOR } from './render/render.js';
 import { PACKAGE_NAME, PROJECT_URL, VERSION } from './version.js';
 
 const HELP = `${PACKAGE_NAME} ${VERSION} — turn a city or postal code into isometric pixel art
@@ -29,6 +30,10 @@ EXAMPLES
   iso-cities --postcode 10115 --country DE --theme dusk
   iso-cities "Porto" --radius 250 --scale 4 -o porto.png
   iso-cities --lat 45.4408 --lon 12.3155 --theme gameboy
+  iso-cities --postcode 10115 --country DE --region
+  iso-cities "Bruges, Belgium" --region --no-trees
+  iso-cities --postcode 10115 --country DE --region \\
+             --highlight "Museum fuer Naturkunde, Berlin"
 
 PLACE
   --city <name>            City, town or district name
@@ -39,6 +44,21 @@ PLACE
   --lat <deg> --lon <deg>  Exact coordinates, skipping the geocoder
   --name <text>            Override the label drawn on the image
   --language <code>        Preferred language for place names (default: en)
+
+REGION
+      --region             Draw the place's real outline instead of a square.
+                           Works for postcode districts and city boundaries;
+                           falls back to --radius if the match has no outline.
+
+HIGHLIGHT
+      --highlight <addr>   Single out an address: everything else turns grey
+                           and a pin is dropped on the matching building
+      --highlight-lat <d>  Highlight an exact coordinate instead
+      --highlight-lon <d>
+      --highlight-label <t>  Label to draw for it (default: the query text)
+      --highlight-color <hex>  Accent colour (default: ${DEFAULT_HIGHLIGHT_COLOR})
+      --no-marker          Skip the pin, colour the building only
+      --no-desaturate      Keep everything in colour, just accent the match
 
 FRAMING
   -r, --radius <metres>    Half-width of the area to draw (default: ${DEFAULT_RADIUS_METRES}, ${MIN_RADIUS_METRES}-${MAX_RADIUS_METRES})
@@ -110,6 +130,15 @@ export async function main(argv: string[]): Promise<number> {
         lon: { type: 'string' },
         name: { type: 'string' },
         language: { type: 'string' },
+
+        region: { type: 'boolean' },
+        highlight: { type: 'string' },
+        'highlight-lat': { type: 'string' },
+        'highlight-lon': { type: 'string' },
+        'highlight-label': { type: 'string' },
+        'highlight-color': { type: 'string' },
+        'no-marker': { type: 'boolean' },
+        'no-desaturate': { type: 'boolean' },
 
         radius: { type: 'string', short: 'r' },
         width: { type: 'string', short: 'w' },
@@ -202,10 +231,24 @@ export async function main(argv: string[]): Promise<number> {
 
   const timeout = numberFlag(flags, 'timeout', 90_000);
 
+  let highlight: PlaceQuery | undefined;
+  try {
+    highlight = buildHighlightQuery(flags);
+  } catch (error) {
+    process.stderr.write(`${errorMessage(error)}\n\nRun "iso-cities --help" for usage.\n`);
+    return 2;
+  }
+
   try {
     const result = await renderCity(query, {
       radius,
       theme,
+      region: Boolean(flags['region']),
+      ...(highlight ? { highlight } : {}),
+      ...(flags['highlight-label'] ? { highlightLabel: flags['highlight-label'] as string } : {}),
+      ...(flags['highlight-color'] ? { highlightColor: flags['highlight-color'] as string } : {}),
+      marker: !flags['no-marker'],
+      ...(flags['no-desaturate'] ? { desaturate: false } : {}),
       width: numberFlag(flags, 'width', 1024),
       ...(flags['height'] ? { height: numberFlag(flags, 'height', 0) } : {}),
       scale: numberFlag(flags, 'scale', 2),
@@ -326,6 +369,36 @@ function buildQuery(flags: ParsedFlags, positionals: string[]): PlaceQuery {
     );
   }
   return query;
+}
+
+/** Builds the highlight query from --highlight or --highlight-lat/-lon. */
+function buildHighlightQuery(flags: ParsedFlags): PlaceQuery | undefined {
+  const address = flags['highlight'] as string | undefined;
+  const lat = flags['highlight-lat'] as string | undefined;
+  const lon = flags['highlight-lon'] as string | undefined;
+
+  if ((lat === undefined) !== (lon === undefined)) {
+    throw new Error('--highlight-lat and --highlight-lon must be given together.');
+  }
+
+  if (lat !== undefined && lon !== undefined) {
+    const latValue = Number(lat);
+    const lonValue = Number(lon);
+    if (!Number.isFinite(latValue) || !Number.isFinite(lonValue)) {
+      throw new Error('--highlight-lat and --highlight-lon must be numbers.');
+    }
+    return { lat: latValue, lon: lonValue };
+  }
+
+  if (address !== undefined) {
+    if (address.trim().length === 0) throw new Error('--highlight needs an address.');
+    return { q: address };
+  }
+
+  if (flags['highlight-label'] || flags['highlight-color']) {
+    throw new Error('--highlight-label and --highlight-color need --highlight or --highlight-lat/-lon.');
+  }
+  return undefined;
 }
 
 function numberFlag(flags: ParsedFlags, key: string, fallback: number): number {

@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { geometryToPolygons, projectBoundary } from '../src/geo/boundary.js';
 import { createProjector, layoutFor } from '../src/render/iso.js';
-import { THEMES, THEME_NAMES, getTheme } from '../src/render/palette.js';
-import { Raster, solid } from '../src/render/raster.js';
+import {
+  THEMES,
+  THEME_NAMES,
+  desaturateTheme,
+  getTheme,
+  mapThemeColors,
+} from '../src/render/palette.js';
+import { Raster, rasterizeMask, solid } from '../src/render/raster.js';
 import { renderScene } from '../src/render/render.js';
 import { bayer4, hex, mix, quantiseFactor, shade, toHex } from '../src/render/color.js';
 import type { Scene } from '../src/types.js';
@@ -408,6 +415,224 @@ test('layer toggles change the output', () => {
 
   const noShadows = renderScene(testScene(), { width: 240, scale: 1, shadows: false });
   assert.notDeepEqual([...withOutlines.raster.data], [...noShadows.raster.data]);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Clip mask, regions and highlights                                          */
+/* -------------------------------------------------------------------------- */
+
+test('rasterizeMask marks exactly the covered pixels', () => {
+  const mask = rasterizeMask(
+    [
+      [
+        { x: 2, y: 2 },
+        { x: 6, y: 2 },
+        { x: 6, y: 6 },
+        { x: 2, y: 6 },
+      ],
+    ],
+    10,
+    10,
+  );
+  assert.equal(mask.length, 100);
+  let covered = 0;
+  for (let y = 0; y < 10; y++) {
+    for (let x = 0; x < 10; x++) {
+      const inside = x >= 2 && x < 6 && y >= 2 && y < 6;
+      assert.equal(mask[y * 10 + x] === 1, inside, `mask at ${x},${y}`);
+      if (mask[y * 10 + x]) covered++;
+    }
+  }
+  assert.equal(covered, 16);
+});
+
+test('a mask and a fill of the same path agree pixel for pixel', () => {
+  const ring = [
+    { x: 1.3, y: 0.7 },
+    { x: 8.9, y: 2.2 },
+    { x: 5.1, y: 9.4 },
+  ];
+  const raster = new Raster(12, 12, [0, 0, 0]);
+  raster.fillPath([ring], solid([255, 255, 255]));
+  const mask = rasterizeMask([ring], 12, 12);
+
+  for (let y = 0; y < 12; y++) {
+    for (let x = 0; x < 12; x++) {
+      assert.equal(raster.get(x, y)[0] === 255, mask[y * 12 + x] === 1, `disagreement at ${x},${y}`);
+    }
+  }
+});
+
+test('the clip mask discards writes outside it', () => {
+  const raster = new Raster(8, 8, [0, 0, 0]);
+  const mask = new Uint8Array(64);
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) mask[y * 8 + x] = 1;
+  raster.clipMask = mask;
+
+  raster.fillRect(0, 0, 8, 8, [255, 255, 255]);
+  raster.set(7, 7, [255, 0, 0]);
+  raster.blend(7, 0, [255, 0, 0], 0.5);
+
+  assert.equal(raster.get(0, 0)[0], 255, 'inside the mask');
+  assert.equal(raster.get(7, 7)[0], 0, 'set() outside the mask is discarded');
+  assert.equal(raster.get(7, 0)[0], 0, 'blend() outside the mask is discarded');
+
+  raster.clipMask = null;
+  raster.set(7, 7, [255, 0, 0]);
+  assert.equal(raster.get(7, 7)[0], 255, 'clearing the mask restores writing');
+});
+
+test('layoutFor frames an arbitrary extent as tightly as a square', () => {
+  const layout = layoutFor({
+    extent: [
+      { x: -100, y: -50 },
+      { x: 300, y: -50 },
+      { x: 300, y: 150 },
+      { x: -100, y: 150 },
+    ],
+    width: 800,
+    margin: 10,
+    maxHeight: 0,
+    verticalExaggeration: 1,
+  });
+
+  const projector = createProjector({
+    scale: layout.scale,
+    verticalExaggeration: 1,
+    originX: layout.originX,
+    originY: layout.originY,
+  });
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const corner of [
+    { x: -100, y: -50 },
+    { x: 300, y: -50 },
+    { x: 300, y: 150 },
+    { x: -100, y: 150 },
+  ]) {
+    const p = projector.project(corner.x, corner.y, 0);
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    assert.ok(p.y >= -1 && p.y <= layout.height + 1, `y out of frame: ${p.y}`);
+  }
+  assert.ok(Math.abs(minX - 10) < 1.5, `left edge should sit on the margin, was ${minX}`);
+  assert.ok(Math.abs(maxX - 790) < 1.5, `right edge should sit on the margin, was ${maxX}`);
+});
+
+test('desaturateTheme drains colour but keeps light and dark apart', () => {
+  const theme = getTheme('daylight');
+  const grey = desaturateTheme(theme);
+
+  for (const colour of [grey.sky, grey.outline, ...grey.roofs, ...grey.walls]) {
+    assert.equal(colour[0], colour[1], `expected neutral grey, got ${colour}`);
+    assert.equal(colour[1], colour[2], `expected neutral grey, got ${colour}`);
+  }
+  const lum = (c: readonly [number, number, number]) => c[0];
+  assert.ok(
+    Math.abs(lum(grey.walls[0]!) - lum(grey.roofs[0]!)) > 20,
+    'roofs and walls must stay distinguishable once the hue is gone',
+  );
+});
+
+test('desaturateTheme at partial strength keeps some colour', () => {
+  const theme = getTheme('daylight');
+  const partial = desaturateTheme(theme, 0.5);
+  const roof = partial.roofs[0]!;
+  assert.notEqual(roof[0], roof[2], 'a half-strength desaturation is not neutral');
+});
+
+test('mapThemeColors reaches nested colours and leaves other fields alone', () => {
+  const theme = getTheme('daylight');
+  const black = mapThemeColors(theme, () => [0, 0, 0]);
+  assert.deepEqual([...black.sky], [0, 0, 0]);
+  assert.deepEqual([...black.green.park[0]!], [0, 0, 0]);
+  assert.deepEqual([...black.road.motorway], [0, 0, 0]);
+  assert.equal(black.name, theme.name, 'strings are untouched');
+  assert.equal(black.shadowAlpha, theme.shadowAlpha, 'numbers are untouched');
+  assert.equal(black.window.litChance, theme.window.litChance);
+});
+
+test('a region render confines the ground to the boundary shape', () => {
+  const boundary = projectBoundary(
+    { lat: 0, lon: 0 },
+    geometryToPolygons({
+      type: 'Polygon',
+      // A triangle, so a lot of the frame is legitimately outside it.
+      coordinates: [
+        [
+          [0, 0],
+          [0.0018, 0],
+          [0, -0.0018],
+          [0, 0],
+        ],
+      ],
+    })!,
+  )!;
+
+  const scene = testScene({ boundary, radius: 200 });
+  const image = renderScene(scene, { width: 300, scale: 1 });
+  const theme = image.theme;
+
+  const isSky = (x: number, y: number) => {
+    const c = image.raster.get(x, y);
+    return c[0] === theme.sky[0] && c[1] === theme.sky[1] && c[2] === theme.sky[2];
+  };
+
+  // The bottom-left corner falls well outside a triangle anchored top-left.
+  assert.ok(isSky(2, image.height - 3), 'outside the boundary must stay sky');
+
+  let painted = 0;
+  for (let y = 0; y < image.height; y++) {
+    for (let x = 0; x < image.width; x++) if (!isSky(x, y)) painted++;
+  }
+  const coverage = painted / (image.width * image.height);
+  assert.ok(coverage > 0.05 && coverage < 0.75, `unexpected ground coverage: ${coverage.toFixed(2)}`);
+});
+
+test('a highlight turns the city grey and paints one building in the accent', () => {
+  const scene = testScene();
+  scene.buildings[0]!.highlighted = true;
+  scene.highlight = { position: scene.buildings[0]!.centroid, buildingId: 'w1', distance: 0 };
+
+  const image = renderScene(scene, { width: 320, scale: 1, highlightColor: '#ff0000' });
+
+  let accentish = 0;
+  let coloured = 0;
+  for (let i = 0; i < image.raster.data.length; i += 4) {
+    const r = image.raster.data[i]!;
+    const g = image.raster.data[i + 1]!;
+    const b = image.raster.data[i + 2]!;
+    if (r > 150 && g < 110 && b < 110) accentish++;
+    else if (Math.abs(r - g) > 12 || Math.abs(g - b) > 12) coloured++;
+  }
+  assert.ok(accentish > 20, `expected accent pixels, found ${accentish}`);
+  assert.ok(coloured < accentish, `the rest of the scene should be grey, found ${coloured} colour pixels`);
+});
+
+test('--no-desaturate keeps the scene in colour alongside the accent', () => {
+  const scene = testScene();
+  scene.buildings[0]!.highlighted = true;
+  scene.highlight = { position: scene.buildings[0]!.centroid, buildingId: 'w1', distance: 0 };
+
+  const grey = renderScene(scene, { width: 320, scale: 1 });
+  const colour = renderScene(scene, { width: 320, scale: 1, desaturate: false });
+  assert.notDeepEqual([...grey.raster.data], [...colour.raster.data]);
+});
+
+test('the marker is drawn even when the highlight matched no building', () => {
+  const scene = testScene();
+  scene.highlight = { position: { x: 0, y: 0 } };
+
+  const withMarker = renderScene(scene, { width: 320, scale: 1, highlightColor: '#ff0000' });
+  const without = renderScene(scene, { width: 320, scale: 1, marker: false });
+  assert.notDeepEqual([...withMarker.raster.data], [...without.raster.data]);
+
+  let accent = 0;
+  for (let i = 0; i < withMarker.raster.data.length; i += 4) {
+    if (withMarker.raster.data[i]! > 150 && withMarker.raster.data[i + 1]! < 110) accent++;
+  }
+  assert.ok(accent > 10, `expected a visible pin, found ${accent} accent pixels`);
 });
 
 test('tall buildings do not overflow the top of the frame', () => {

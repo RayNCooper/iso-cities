@@ -20,6 +20,7 @@ import {
   type Bounds,
   type Ring,
 } from '../geo/polygon.js';
+import { boundaryContains, type Boundary } from '../geo/boundary.js';
 import { toLocal, type LatLon, type Point } from '../geo/project.js';
 import {
   TREE_DENSITY,
@@ -37,6 +38,7 @@ import type {
   RailFeature,
   RoadFeature,
   Scene,
+  SceneHighlight,
   TreeFeature,
 } from '../types.js';
 import { stableUnit } from '../util/rand.js';
@@ -49,10 +51,20 @@ const MAX_TREES = 9000;
 const MIN_BUILDING_AREA_M2 = 6;
 const MIN_AREA_M2 = 20;
 
+/** How far from the requested point a building may be and still be the match. */
+const MAX_HIGHLIGHT_SNAP_METRES = 75;
+
 export interface BuildSceneOptions {
   place: Place;
   radius: number;
   seed?: number;
+  /**
+   * Clip to this shape instead of the square. Buildings and trees are kept by
+   * containment; flat features are cut exactly by the renderer's mask.
+   */
+  boundary?: Boundary;
+  /** A point to single out, in local metres. */
+  highlight?: { position: Point; label?: string };
   /** Feature toggles, all on by default. */
   buildings?: boolean;
   roads?: boolean;
@@ -76,7 +88,13 @@ export function buildScene(data: OverpassResponse, options: BuildSceneOptions): 
   } = options;
 
   const origin = place.centre;
-  const bounds: Bounds = { minX: -radius, minY: -radius, maxX: radius, maxY: radius };
+  const boundary = options.boundary;
+  // Geometry is always clipped to a rectangle first — cheap, and it bounds the
+  // work. When a boundary is present that rectangle is its bounding box, and
+  // the exact shape is applied afterwards.
+  const bounds: Bounds = boundary
+    ? boundary.bounds
+    : { minX: -radius, minY: -radius, maxX: radius, maxY: radius };
 
   const buildings: BuildingFeature[] = [];
   const areas: AreaFeature[] = [];
@@ -187,11 +205,22 @@ export function buildScene(data: OverpassResponse, options: BuildSceneOptions): 
   areas.sort((a, b) => b.area - a.area);
 
   if (wantTrees && wantGreenery) {
-    scatterTrees(areas, trees, seed, bounds);
+    scatterTrees(areas, trees, seed, bounds, boundary);
   }
 
+  // Buildings and trees stand up out of the ground plane, so the renderer's
+  // ground mask cannot cut them — they have to be filtered here instead.
+  const keptBuildings = boundary
+    ? buildings.filter((b) => boundaryContains(boundary, b.centroid))
+    : buildings;
+  const keptTrees = boundary ? trees.filter((t) => boundaryContains(boundary, t.position)) : trees;
+
+  const highlight = options.highlight
+    ? resolveHighlight(keptBuildings, options.highlight.position, options.highlight.label)
+    : undefined;
+
   let maxHeight = 0;
-  for (const building of buildings) {
+  for (const building of keptBuildings) {
     if (building.height > maxHeight) maxHeight = building.height;
   }
 
@@ -199,22 +228,73 @@ export function buildScene(data: OverpassResponse, options: BuildSceneOptions): 
     place,
     origin,
     radius,
-    buildings,
+    ...(boundary ? { boundary } : {}),
+    ...(highlight ? { highlight } : {}),
+    buildings: keptBuildings,
     areas,
     roads,
     rails,
-    trees,
+    trees: keptTrees,
     attribution: OSM_ATTRIBUTION,
     stats: {
-      buildings: buildings.length,
+      buildings: keptBuildings.length,
       areas: areas.length,
       roads: roads.length,
       rails: rails.length,
-      trees: trees.length,
+      trees: keptTrees.length,
       elements: data.elements.length,
       maxHeight,
     },
   };
+}
+
+/**
+ * Attaches a highlight to the building at `position`.
+ *
+ * Geocoded addresses in OSM are usually a node placed inside the building, but
+ * plenty sit on the pavement or at the plot entrance instead — so a containment
+ * test alone would miss them. Falling back to the nearest building within
+ * {@link MAX_HIGHLIGHT_SNAP_METRES} catches those without silently snapping to
+ * something across the street.
+ */
+function resolveHighlight(
+  buildings: BuildingFeature[],
+  position: Point,
+  label: string | undefined,
+): SceneHighlight {
+  const highlight: SceneHighlight = { position };
+  if (label) highlight.label = label;
+
+  for (const building of buildings) {
+    const rings = building.rings;
+    let inside = false;
+    for (const ring of rings) {
+      if (pointInRing(ring, position)) inside = !inside;
+    }
+    if (inside) {
+      building.highlighted = true;
+      highlight.buildingId = building.id;
+      highlight.distance = 0;
+      return highlight;
+    }
+  }
+
+  let nearest: BuildingFeature | undefined;
+  let nearestDistance = Infinity;
+  for (const building of buildings) {
+    const d = Math.hypot(building.centroid.x - position.x, building.centroid.y - position.y);
+    if (d < nearestDistance) {
+      nearestDistance = d;
+      nearest = building;
+    }
+  }
+
+  if (nearest && nearestDistance <= MAX_HIGHLIGHT_SNAP_METRES) {
+    nearest.highlighted = true;
+    highlight.buildingId = nearest.id;
+    highlight.distance = nearestDistance;
+  }
+  return highlight;
 }
 
 function inBounds(p: Point, bounds: Bounds): boolean {
@@ -314,7 +394,13 @@ function clipRings(rings: Ring[], bounds: Bounds): Ring[] | null {
  * canopy size are derived from the area id plus the global seed, so a given
  * query always produces the same wood.
  */
-function scatterTrees(areas: AreaFeature[], trees: TreeFeature[], seed: number, bounds: Bounds): void {
+function scatterTrees(
+  areas: AreaFeature[],
+  trees: TreeFeature[],
+  seed: number,
+  bounds: Bounds,
+  boundary?: Boundary,
+): void {
   for (const area of areas) {
     if (trees.length >= MAX_TREES) return;
     if (area.kind !== 'green') continue;
@@ -337,6 +423,9 @@ function scatterTrees(areas: AreaFeature[], trees: TreeFeature[], seed: number, 
         if (!inBounds(point, bounds)) continue;
         if (!pointInRing(outer, point)) continue;
         if (holes.some((hole) => pointInRing(hole, point))) continue;
+        // Rejecting here rather than after the fact matters for large regions,
+        // where the tree cap would otherwise fill up outside the boundary.
+        if (boundary && !boundaryContains(boundary, point)) continue;
         // Thin the grid slightly so rows do not read as an orchard.
         if (stableUnit(area.id, seed, `keep${index}`) < 0.18) continue;
         trees.push({

@@ -2,6 +2,7 @@
  * Domain types shared across fetching, scene building and rendering.
  */
 
+import type { Boundary, LatLonPolygons } from './geo/boundary.js';
 import type { LatLon, Point } from './geo/project.js';
 import type { Ring } from './geo/polygon.js';
 
@@ -44,6 +45,12 @@ export interface Place {
   category?: string;
   type?: string;
   countryCode?: string;
+  /**
+   * The matched object's own outline, as lat/lon rings, when the geocoder
+   * returned one. A city or postcode district has this; a street address or a
+   * bare coordinate does not.
+   */
+  boundary?: LatLonPolygons;
 }
 
 export interface BuildingFeature {
@@ -60,6 +67,8 @@ export interface BuildingFeature {
   centroid: Point;
   /** Footprint area in square metres. */
   area: number;
+  /** Set on the building a highlight resolved to; drawn in full colour. */
+  highlighted?: boolean;
 }
 
 export interface AreaFeature {
@@ -106,11 +115,27 @@ export interface SceneStats {
   maxHeight: number;
 }
 
+/** A single address or point singled out in an otherwise desaturated render. */
+export interface SceneHighlight {
+  position: Point;
+  label?: string;
+  /** Id of the building the point resolved to, if it landed on one. */
+  buildingId?: string;
+  /** Metres from the requested point to that building, for reporting. */
+  distance?: number;
+}
+
 export interface Scene {
   place: Place;
   origin: LatLon;
-  /** Half-width of the rendered square, in metres. */
+  /** Half-width of the rendered square, in metres. Ignored when `boundary` is set. */
   radius: number;
+  /**
+   * When present, the render is clipped to this shape instead of a square and
+   * the ground plane takes its outline.
+   */
+  boundary?: Boundary;
+  highlight?: SceneHighlight;
   buildings: BuildingFeature[];
   areas: AreaFeature[];
   roads: RoadFeature[];

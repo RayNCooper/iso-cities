@@ -19,6 +19,8 @@ There are **no runtime dependencies**. The polygon rasteriser, the PNG encoder a
 
 - [Install](#install)
 - [Usage](#usage)
+- [Whole regions instead of a square](#whole-regions-instead-of-a-square)
+- [Highlighting an address](#highlighting-an-address)
 - [Themes](#themes)
 - [Choosing a radius](#choosing-a-radius)
 - [Library API](#library-api)
@@ -52,6 +54,13 @@ iso-cities --lat 45.4408 --lon 12.3155 --name "Venice"
 
 # Zoom in for chunkier pixels, then upscale 4x for a crisp poster
 iso-cities "Porto" --radius 200 --scale 4 -o porto.png
+
+# The real shape of a postcode district, not a square
+iso-cities --postcode 10115 --country DE --region
+
+# ...with one address picked out and everything else in grey
+iso-cities --postcode 10115 --country DE --region \
+           --highlight "Museum für Naturkunde, Berlin"
 ```
 
 Run `iso-cities --help` for the full flag list. The most useful ones:
@@ -68,6 +77,62 @@ Run `iso-cities --help` for the full flag list. The most useful ones:
 | `--json <file>` | — | Also dump the parsed scene as JSON |
 
 Layers can be switched off individually: `--no-buildings`, `--no-roads`, `--no-water`, `--no-greenery`, `--no-trees`, `--no-rails`. Styling has `--no-shadows`, `--no-windows`, `--no-outlines`, `--no-title`.
+
+## Whole regions instead of a square
+
+`--region` drops the square entirely and draws the place's actual outline — a postcode district, a city boundary, a borough. The geocoder returns the matched object's own geometry, and that shape becomes the ground plane.
+
+```bash
+iso-cities --postcode 10115 --country DE --region
+iso-cities "Delft, Netherlands" --region --no-trees
+```
+
+![Postcode 10115 drawn as its real shape](examples/berlin-10115-region.png)
+
+Everything lying flat on the ground — roads, water, parks, shadows — is cut to the boundary exactly, by rasterising it once into a coverage mask rather than clipping thousands of polygons against a 2000-vertex concave shape. Buildings and trees stand up out of the ground plane, so they are filtered by containment instead and their roofs are free to rise above the silhouette.
+
+If the geocoder has no outline for the match — a street address, a bare coordinate — the render falls back to `--radius` and says so.
+
+**Regions get big.** A postcode district is a couple of square kilometres and renders in seconds. A whole municipality is a different order of magnitude:
+
+| Query | Area | Elements | Buildings |
+| --- | --- | --- | --- |
+| `--postcode 10115 --country DE` | 2.4 km² | 17k | 1.9k |
+| `"Delft, Netherlands"` | 24 km² | 95k | 36k |
+
+Both work. Above 25 km² you get a warning, and `--no-trees` is worth passing; past a hundred or so the public Overpass API becomes the bottleneck long before the renderer does.
+
+At municipal scale individual buildings fall below a pixel, so outlines are dropped automatically and the render becomes a tonal map of the built fabric — which is its own kind of useful:
+
+![Delft drawn as its whole municipal boundary](examples/delft-region.png)
+
+## Highlighting an address
+
+`--highlight` singles out one address: the city around it drains to grey, the matching building is painted in an accent colour, and a pin is dropped on it.
+
+```bash
+iso-cities --postcode 10115 --country DE --region \
+           --highlight "Museum für Naturkunde, Berlin"
+
+# Or an exact point, and a different accent
+iso-cities "Porto" --highlight-lat 41.1408 --highlight-lon -8.6120 \
+           --highlight-color '#00d4ff'
+```
+
+![The Naturkundemuseum picked out in a grey Berlin 10115](examples/berlin-highlight.png)
+
+The address is geocoded, then matched to the building whose footprint contains it. Address nodes in OSM often sit on the pavement or at a plot entrance rather than inside the building, so a miss falls back to the nearest building within 75 m — far enough to catch those, close enough not to silently grab one across the street. The console reports which of the two happened, and the highlighted address becomes the image's subtitle.
+
+The pin is sized from the canvas rather than from world units, so it stays findable whether the building is 80 pixels across or half of one, and it is drawn after every other sprite so nothing can occlude it.
+
+| Flag | What it does |
+| --- | --- |
+| `--highlight <address>` | Geocode and spotlight this address |
+| `--highlight-lat/-lon` | Spotlight an exact coordinate instead |
+| `--highlight-label <text>` | Override the drawn label |
+| `--highlight-color <hex>` | Accent colour (default `#ff4a2b`) |
+| `--no-marker` | Colour the building but skip the pin |
+| `--no-desaturate` | Keep the city in colour, just accent the match |
 
 ## Themes
 

@@ -20,11 +20,92 @@ export function solid(color: RGB): Shader {
   return () => color;
 }
 
+/**
+ * Walks a path with the even-odd rule, reporting each filled horizontal span
+ * as inclusive pixel columns. Sampling happens at pixel centres, which is what
+ * gives fills their crisp staircase instead of a soft edge.
+ *
+ * Shared by {@link Raster.fillPath} and {@link rasterizeMask} so a mask and a
+ * fill of the same path always agree pixel for pixel.
+ */
+function scanPath(
+  rings: ScreenPoint[][],
+  width: number,
+  height: number,
+  onSpan: (y: number, x0: number, x1: number) => void,
+): void {
+  const edges: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const ring of rings) {
+    const n = ring.length;
+    if (n < 3) continue;
+    for (let i = 0; i < n; i++) {
+      const a = ring[i]!;
+      const b = ring[(i + 1) % n]!;
+      if (a.y === b.y) continue;
+      edges.push({ x0: a.x, y0: a.y, x1: b.x, y1: b.y });
+      if (a.y < minY) minY = a.y;
+      if (a.y > maxY) maxY = a.y;
+      if (b.y < minY) minY = b.y;
+      if (b.y > maxY) maxY = b.y;
+    }
+  }
+  if (edges.length === 0) return;
+
+  const yStart = Math.max(0, Math.floor(minY));
+  const yEnd = Math.min(height - 1, Math.ceil(maxY));
+  const crossings: number[] = [];
+
+  for (let py = yStart; py <= yEnd; py++) {
+    const sy = py + 0.5;
+    crossings.length = 0;
+    for (const e of edges) {
+      const { y0, y1 } = e;
+      if (sy >= y0 === sy >= y1) continue;
+      const t = (sy - y0) / (y1 - y0);
+      crossings.push(e.x0 + t * (e.x1 - e.x0));
+    }
+    if (crossings.length < 2) continue;
+    crossings.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      const px0 = Math.max(0, Math.ceil(crossings[i]! - 0.5));
+      const px1 = Math.min(width - 1, Math.floor(crossings[i + 1]! - 0.5));
+      if (px1 >= px0) onSpan(py, px0, px1);
+    }
+  }
+}
+
+/**
+ * Rasterises a path into a one-byte-per-pixel coverage mask.
+ *
+ * Used to cut the ground plane and everything lying flat on it to a real
+ * administrative boundary. Testing a precomputed mask per pixel is exact and
+ * cheap, where clipping every polygon against a 2000-vertex concave shape
+ * would be neither.
+ */
+export function rasterizeMask(rings: ScreenPoint[][], width: number, height: number): Uint8Array {
+  const mask = new Uint8Array(width * height);
+  scanPath(rings, width, height, (y, x0, x1) => {
+    mask.fill(1, y * width + x0, y * width + x1 + 1);
+  });
+  return mask;
+}
+
 export class Raster {
   readonly width: number;
   readonly height: number;
   /** RGBA, 4 bytes per pixel, row-major. */
   readonly data: Uint8ClampedArray;
+
+  /**
+   * Optional coverage mask, one byte per pixel. While set, every write outside
+   * it is discarded. Used to confine the ground and everything flat on it to a
+   * boundary shape, while buildings — which stand up out of the ground plane —
+   * are drawn with it cleared.
+   */
+  clipMask: Uint8Array | null = null;
 
   constructor(width: number, height: number, background?: RGB) {
     if (width <= 0 || height <= 0) throw new Error(`Raster: invalid size ${width}x${height}`);
@@ -48,6 +129,7 @@ export class Raster {
     const px = x | 0;
     const py = y | 0;
     if (px < 0 || py < 0 || px >= this.width || py >= this.height) return;
+    if (this.clipMask && this.clipMask[py * this.width + px] === 0) return;
     const i = (py * this.width + px) * 4;
     this.data[i] = color[0];
     this.data[i + 1] = color[1];
@@ -62,6 +144,7 @@ export class Raster {
     const px = x | 0;
     const py = y | 0;
     if (px < 0 || py < 0 || px >= this.width || py >= this.height) return;
+    if (this.clipMask && this.clipMask[py * this.width + px] === 0) return;
     const i = (py * this.width + px) * 4;
     const d = this.data;
     d[i] = d[i]! + (color[0] - d[i]!) * alpha;
@@ -93,52 +176,12 @@ export class Raster {
    * so inner rings punch holes (courtyards, islands in lakes).
    */
   fillPath(rings: ScreenPoint[][], shader: Shader): void {
-    const edges: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
-    let minY = Infinity;
-    let maxY = -Infinity;
-
-    for (const ring of rings) {
-      const n = ring.length;
-      if (n < 3) continue;
-      for (let i = 0; i < n; i++) {
-        const a = ring[i]!;
-        const b = ring[(i + 1) % n]!;
-        if (a.y === b.y) continue;
-        edges.push({ x0: a.x, y0: a.y, x1: b.x, y1: b.y });
-        if (a.y < minY) minY = a.y;
-        if (a.y > maxY) maxY = a.y;
-        if (b.y < minY) minY = b.y;
-        if (b.y > maxY) maxY = b.y;
+    scanPath(rings, this.width, this.height, (y, x0, x1) => {
+      for (let px = x0; px <= x1; px++) {
+        const c = shader(px, y);
+        if (c) this.set(px, y, c);
       }
-    }
-    if (edges.length === 0) return;
-
-    const yStart = Math.max(0, Math.floor(minY));
-    const yEnd = Math.min(this.height - 1, Math.ceil(maxY));
-    const crossings: number[] = [];
-
-    for (let py = yStart; py <= yEnd; py++) {
-      const sy = py + 0.5;
-      crossings.length = 0;
-      for (const e of edges) {
-        const { y0, y1 } = e;
-        if (sy >= y0 === sy >= y1) continue;
-        const t = (sy - y0) / (y1 - y0);
-        crossings.push(e.x0 + t * (e.x1 - e.x0));
-      }
-      if (crossings.length < 2) continue;
-      crossings.sort((a, b) => a - b);
-      for (let i = 0; i + 1 < crossings.length; i += 2) {
-        const xa = crossings[i]!;
-        const xb = crossings[i + 1]!;
-        const px0 = Math.max(0, Math.ceil(xa - 0.5));
-        const px1 = Math.min(this.width - 1, Math.floor(xb - 0.5));
-        for (let px = px0; px <= px1; px++) {
-          const c = shader(px, py);
-          if (c) this.set(px, py, c);
-        }
-      }
-    }
+    });
   }
 
   fillPolygon(ring: ScreenPoint[], shader: Shader): void {

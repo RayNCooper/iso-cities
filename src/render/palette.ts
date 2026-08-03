@@ -305,3 +305,53 @@ export function buildingColors(
 export function jitterColor(color: RGB, unit: number, strength = 0.06): RGB {
   return shade(color, 1 + (unit - 0.5) * 2 * strength);
 }
+
+/** A 3-number array inside a theme is always an RGB triple. */
+function isRgb(value: unknown): value is RGB {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    typeof value[0] === 'number' &&
+    typeof value[1] === 'number' &&
+    typeof value[2] === 'number'
+  );
+}
+
+/**
+ * Rebuilds a theme with every colour passed through `fn`, leaving numbers,
+ * strings and structure alone.
+ *
+ * Walking the theme generically rather than listing its sixty-odd colour
+ * fields means a new field added to `Theme` is transformed automatically
+ * instead of being silently skipped.
+ */
+export function mapThemeColors(theme: Theme, fn: (color: RGB) => RGB): Theme {
+  const walk = (value: unknown): unknown => {
+    if (isRgb(value)) return fn(value);
+    if (Array.isArray(value)) return value.map(walk);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v)]));
+    }
+    return value;
+  };
+  return walk(theme) as Theme;
+}
+
+/**
+ * Drains the colour out of a theme, for spotlight renders where one building
+ * stays in colour and the city around it goes to grey.
+ *
+ * `amount` of 1 is fully neutral; lower values keep a hint of the original
+ * hue. Luminance is compressed slightly toward mid-grey so the surviving
+ * colour has room to stand out without the greys turning to mud.
+ */
+export function desaturateTheme(theme: Theme, amount = 1): Theme {
+  return mapThemeColors(theme, (color) => {
+    // Slightly expanded around mid-grey: a straight luminance map leaves roofs,
+    // walls and pavement sitting too close together to tell apart once the hue
+    // that separated them is gone.
+    const grey = luminance(color);
+    const spread = Math.max(0, Math.min(255, 128 + (grey - 128) * 1.22));
+    return mix(color, [spread, spread, spread], amount);
+  });
+}

@@ -10,6 +10,7 @@
  * front, which is what makes near buildings occlude far ones.
  */
 
+import { boundaryOutline } from '../geo/boundary.js';
 import { ROAD_PRIORITY } from '../osm/classify.js';
 import type {
   AreaFeature,
@@ -24,6 +25,8 @@ import { stableIndex, stableUnit } from '../util/rand.js';
 import {
   bayer8,
   darken,
+  hex,
+  lighten,
   mix,
   pixelNoise,
   quantiseFactor,
@@ -31,9 +34,16 @@ import {
   type RGB,
 } from './color.js';
 import { ASCENDER_ROWS, GLYPH_HEIGHT, drawText, measureText } from './font.js';
-import { createProjector, layoutFor, projectRing, type Projector } from './iso.js';
-import { DEFAULT_THEME, buildingColors, getTheme, jitterColor, type Theme } from './palette.js';
-import { Raster, solid, type ScreenPoint, type Shader } from './raster.js';
+import { createProjector, layoutFor, projectRing, squareExtent, type Projector } from './iso.js';
+import {
+  DEFAULT_THEME,
+  buildingColors,
+  desaturateTheme,
+  getTheme,
+  jitterColor,
+  type Theme,
+} from './palette.js';
+import { Raster, rasterizeMask, solid, type ScreenPoint, type Shader } from './raster.js';
 
 /** Direction the sun comes from, in local (east, south) metres. */
 const LIGHT = { x: 0.86, y: -0.51 };
@@ -43,6 +53,8 @@ const WALL_SHADE_STEPS = 4;
 const MIN_SCALE_FOR_WINDOWS = 0.55;
 /** Below this, railway sleepers stop reading as sleepers. */
 const MIN_SCALE_FOR_SLEEPERS = 0.8;
+/** Default accent for a highlighted address. Chosen to survive a grey field. */
+export const DEFAULT_HIGHLIGHT_COLOR = '#ff4a2b';
 
 export interface RenderOptions {
   /** Theme name or a theme object. */
@@ -66,6 +78,16 @@ export interface RenderOptions {
   shadows?: boolean;
   windows?: boolean;
   outlines?: boolean;
+  /** Accent colour for a highlighted building and its marker. */
+  highlightColor?: string | RGB;
+  /** Draw a pin above the highlighted point. On by default when one exists. */
+  marker?: boolean;
+  /**
+   * Drain colour from everything except the highlight. Defaults to full
+   * desaturation when the scene has a highlight, and none when it does not.
+   * A number between 0 and 1 sets the strength.
+   */
+  desaturate?: boolean | number;
 }
 
 export interface RenderedImage {
@@ -78,7 +100,8 @@ export interface RenderedImage {
 }
 
 export function renderScene(scene: Scene, options: RenderOptions = {}): RenderedImage {
-  const theme = typeof options.theme === 'object' ? options.theme : getTheme(options.theme ?? DEFAULT_THEME);
+  const requested =
+    typeof options.theme === 'object' ? options.theme : getTheme(options.theme ?? DEFAULT_THEME);
   const seed = options.seed ?? 0;
   const width = Math.max(64, Math.round(options.width ?? 1024));
   const margin = options.margin ?? Math.max(6, Math.round(width * 0.012));
@@ -88,8 +111,26 @@ export function renderScene(scene: Scene, options: RenderOptions = {}): Rendered
   const windows = options.windows ?? true;
   const outlines = options.outlines ?? true;
 
+  // A highlight implies a grey city around it, unless told otherwise.
+  const hasHighlight = Boolean(scene.highlight);
+  const desaturation =
+    options.desaturate === undefined
+      ? hasHighlight
+        ? 1
+        : 0
+      : options.desaturate === true
+        ? 1
+        : options.desaturate === false
+          ? 0
+          : options.desaturate;
+  const theme = desaturation > 0 ? desaturateTheme(requested, desaturation) : requested;
+  const accent = resolveAccent(options.highlightColor);
+
+  // Frame the boundary itself when there is one; otherwise the square.
+  const extent = scene.boundary ? boundaryOutline(scene.boundary) : squareExtent(scene.radius);
+
   const layout = layoutFor({
-    radius: scene.radius,
+    extent,
     width,
     margin,
     maxHeight: Math.max(scene.stats.maxHeight, 12),
@@ -106,12 +147,33 @@ export function renderScene(scene: Scene, options: RenderOptions = {}): Rendered
 
   const raster = new Raster(layout.width, layout.height, theme.sky);
 
-  drawGround(raster, projector, scene, theme, seed);
+  // The ground shape, as projected screen rings.
+  const groundRings: ScreenPoint[][] = scene.boundary
+    ? scene.boundary.polygons.flatMap((rings) => rings.map((ring) => projectRing(projector, ring)))
+    : [projectRing(projector, squareExtent(scene.radius))];
+
+  // Everything lying flat on the ground is confined to that shape. Buildings
+  // and trees are not: they stand up, so their tops legitimately rise above
+  // the silhouette, and they were filtered by containment when the scene was
+  // built instead.
+  raster.clipMask = rasterizeMask(groundRings, raster.width, raster.height);
+
+  drawGround(raster, groundRings, theme, seed);
   for (const area of scene.areas) drawArea(raster, projector, area, theme, seed);
   drawRails(raster, projector, scene.rails, theme);
   drawRoads(raster, projector, scene.roads, theme);
   if (shadows) drawShadows(raster, projector, scene, theme);
-  drawSprites(raster, projector, scene, theme, { seed, windows, outlines });
+
+  raster.clipMask = null;
+
+  for (const ring of groundRings) raster.outline(ring, theme.groundEdge);
+
+  drawSprites(raster, projector, scene, theme, { seed, windows, outlines, accent });
+
+  if (scene.highlight && (options.marker ?? true)) {
+    drawMarker(raster, projector, scene, theme, accent);
+  }
+
   drawLabels(raster, scene, theme, options, upscale);
 
   const finalRaster = raster.scaleUp(upscale);
@@ -124,28 +186,18 @@ export function renderScene(scene: Scene, options: RenderOptions = {}): Rendered
   };
 }
 
+function resolveAccent(value: string | RGB | undefined): RGB {
+  if (!value) return hex(DEFAULT_HIGHLIGHT_COLOR);
+  return typeof value === 'string' ? hex(value) : value;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Ground                                                                     */
 /* -------------------------------------------------------------------------- */
 
-function drawGround(
-  raster: Raster,
-  projector: Projector,
-  scene: Scene,
-  theme: Theme,
-  seed: number,
-): void {
-  const r = scene.radius;
-  const corners = projectRing(projector, [
-    { x: -r, y: -r },
-    { x: r, y: -r },
-    { x: r, y: r },
-    { x: -r, y: r },
-  ]);
-
+function drawGround(raster: Raster, groundRings: ScreenPoint[][], theme: Theme, seed: number): void {
   const [base, alt] = theme.ground;
-  raster.fillPath([corners], (x, y) => (pixelNoise(x, y, seed) < 0.14 ? alt : base));
-  raster.outline(corners, theme.groundEdge);
+  raster.fillPath(groundRings, (x, y) => (pixelNoise(x, y, seed) < 0.14 ? alt : base));
 }
 
 function areaShader(area: AreaFeature, theme: Theme, seed: number): Shader {
@@ -391,7 +443,7 @@ function drawSprites(
   projector: Projector,
   scene: Scene,
   theme: Theme,
-  options: { seed: number; windows: boolean; outlines: boolean },
+  options: { seed: number; windows: boolean; outlines: boolean; accent: RGB },
 ): void {
   const sprites: Sprite[] = [];
   for (const building of scene.buildings) {
@@ -441,20 +493,29 @@ function drawBuilding(
   projector: Projector,
   building: BuildingFeature,
   theme: Theme,
-  options: { seed: number; windows: boolean; outlines: boolean },
+  options: { seed: number; windows: boolean; outlines: boolean; accent: RGB },
 ): void {
   const outer = building.rings[0];
   if (!outer || outer.length < 3) return;
 
   const { seed } = options;
-  const palette = buildingColors(
-    theme,
-    stableIndex(building.id, seed, theme.roofs.length, 'colour'),
-    building.landmark,
-  );
   const tone = stableUnit(building.id, seed, 'tone');
-  const roofColor = jitterColor(palette.roof, tone, 0.07);
-  const wallBase = jitterColor(palette.wall, tone, 0.05);
+
+  let roofColor: RGB;
+  let wallBase: RGB;
+  if (building.highlighted) {
+    // No jitter here: the point of the accent is that it is unmistakable.
+    roofColor = options.accent;
+    wallBase = lighten(options.accent, 0.22);
+  } else {
+    const palette = buildingColors(
+      theme,
+      stableIndex(building.id, seed, theme.roofs.length, 'colour'),
+      building.landmark,
+    );
+    roofColor = jitterColor(palette.roof, tone, 0.07);
+    wallBase = jitterColor(palette.wall, tone, 0.05);
+  }
 
   // Slight per-building height jitter stops uniform terraces from reading as
   // one extruded slab.
@@ -501,7 +562,12 @@ function drawBuilding(
     raster.fillPath([face.quad], solid(face.color));
   }
 
-  if (options.windows && theme.window && projector.scale >= MIN_SCALE_FOR_WINDOWS && height >= 5) {
+  if (
+    options.windows &&
+    !building.highlighted &&
+    projector.scale >= MIN_SCALE_FOR_WINDOWS &&
+    height >= 5
+  ) {
     for (const face of faces) {
       drawWindows(raster, projector, building, face, height, theme, seed);
     }
@@ -511,7 +577,12 @@ function drawBuilding(
   const roofRings = building.rings.map((ring) => projectRing(projector, ring, height));
   raster.fillPath(roofRings, solid(roofColor));
 
-  if (options.outlines) {
+  // Below a few pixels across, a one-pixel outline is wider than the face it
+  // is meant to define, so whole districts collapse into black. Dropping it
+  // there lets the roof tones carry the image instead. The highlight always
+  // keeps its outline — it has to stay findable.
+  const footprintPixels = Math.sqrt(Math.max(0, building.area)) * projector.scale;
+  if (options.outlines && (footprintPixels >= 2.5 || building.highlighted)) {
     const ink = theme.outline;
     for (const ring of roofRings) raster.outline(ring, ink);
     for (const face of faces) {
@@ -612,6 +683,74 @@ function drawTree(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Highlight marker                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Draws a pin above the highlighted point.
+ *
+ * Without it the feature is unusable at district scale, where the building
+ * itself may be two pixels across. The pin is sized from the canvas rather
+ * than from world units, so it stays findable at any zoom, and it is drawn
+ * after every sprite so nothing can occlude it.
+ */
+function drawMarker(
+  raster: Raster,
+  projector: Projector,
+  scene: Scene,
+  theme: Theme,
+  accent: RGB,
+): void {
+  const highlight = scene.highlight;
+  if (!highlight) return;
+
+  const building = highlight.buildingId
+    ? scene.buildings.find((b) => b.id === highlight.buildingId)
+    : undefined;
+
+  const ink = theme.outline;
+  const ground = projector.project(highlight.position.x, highlight.position.y, 0);
+  const anchor = projector.project(highlight.position.x, highlight.position.y, building?.height ?? 0);
+
+  const radius = Math.max(3, Math.round(raster.width * 0.005));
+  const stalk = Math.max(12, radius * 5);
+  const tipY = anchor.y - stalk;
+
+  // A ring on the ground, so the eye can find the spot even when the pin head
+  // sits among tall buildings.
+  drawGroundRing(raster, ground.x, ground.y, radius * 2.6, ink, accent);
+
+  // Stalk, with a dark edge either side so it reads against any background.
+  raster.line(anchor.x - 1, anchor.y, anchor.x - 1, tipY, ink);
+  raster.line(anchor.x + 1, anchor.y, anchor.x + 1, tipY, ink);
+  raster.line(anchor.x, anchor.y, anchor.x, tipY, accent);
+
+  // Head.
+  raster.fillDisc(anchor.x, tipY, radius + 1, ink);
+  raster.fillDisc(anchor.x, tipY, radius, accent);
+  raster.fillDisc(anchor.x - radius * 0.3, tipY - radius * 0.3, Math.max(1, radius * 0.34), lighten(accent, 0.55));
+}
+
+/** An ellipse outline lying flat on the isometric ground plane. */
+function drawGroundRing(
+  raster: Raster,
+  cx: number,
+  cy: number,
+  radius: number,
+  ink: RGB,
+  color: RGB,
+): void {
+  const steps = Math.max(24, Math.round(radius * 4));
+  for (let i = 0; i < steps; i++) {
+    const angle = (i / steps) * Math.PI * 2;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius * 0.5;
+    raster.set(x, y + 1, ink);
+    raster.set(x, y, color);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Labels                                                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -657,12 +796,14 @@ function drawLabels(
 }
 
 function defaultSubtitle(scene: Scene): string {
+  // A highlighted address is more useful on the image than its coordinates.
+  if (scene.highlight?.label) return scene.highlight.label;
+
   const { lat, lon } = scene.origin;
   const ns = lat >= 0 ? 'N' : 'S';
   const ew = lon >= 0 ? 'E' : 'W';
-  return `${Math.abs(lat).toFixed(4)}${ns} ${Math.abs(lon).toFixed(4)}${ew} - ${Math.round(
-    scene.radius,
-  )} m radius`;
+  const where = `${Math.abs(lat).toFixed(4)}${ns} ${Math.abs(lon).toFixed(4)}${ew}`;
+  return scene.boundary ? where : `${where} - ${Math.round(scene.radius)} m radius`;
 }
 
 /** Exposed for tests. */

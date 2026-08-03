@@ -9,6 +9,7 @@
 
 import { ResponseCache, cacheKey, DAY_MS } from './cache.js';
 import { request } from './http.js';
+import { geometryToPolygons, type GeoJsonGeometry } from '../geo/boundary.js';
 import type { Place } from '../types.js';
 
 export const DEFAULT_NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
@@ -37,6 +38,11 @@ export interface GeocodeOptions {
   signal?: AbortSignal;
   /** Preferred language for returned names, e.g. `en` or `de`. */
   language?: string;
+  /**
+   * Ask for the matched object's own outline. Needed for region-shaped
+   * renders; it makes responses considerably larger, so it is off by default.
+   */
+  boundary?: boolean;
   onProgress?: (message: string) => void;
 }
 
@@ -70,6 +76,7 @@ interface NominatimResult {
   name?: string;
   display_name?: string;
   address?: NominatimAddress;
+  geojson?: GeoJsonGeometry;
 }
 
 export class GeocodeError extends Error {
@@ -152,6 +159,7 @@ export async function geocode(query: PlaceQuery, options: GeocodeOptions = {}): 
     addressdetails: '1',
     'accept-language': language,
   });
+  if (options.boundary) params.set('polygon_geojson', '1');
 
   if (query.q && !hasStructuredFields(query)) {
     params.set('q', query.q);
@@ -246,6 +254,8 @@ function toPlace(result: NominatimResult, query: PlaceQuery): Place {
   if (result.type) place.type = result.type;
   const code = result.address?.country_code;
   if (code) place.countryCode = code.toUpperCase();
+  const boundary = geometryToPolygons(result.geojson);
+  if (boundary) place.boundary = boundary;
   return place;
 }
 

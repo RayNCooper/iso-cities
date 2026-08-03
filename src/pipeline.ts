@@ -44,6 +44,14 @@ export interface PipelineOptions extends RenderOptions {
   highlight?: PlaceQuery;
   /** Overrides the label drawn for the highlight. Defaults to the query text. */
   highlightLabel?: string;
+  /**
+   * Frame the render on the highlighted address rather than on the matched
+   * place, keeping `radius` around it. Useful when the place query is a whole
+   * city but you want the streets around one building.
+   *
+   * Has no effect with `region`, where the boundary decides the framing.
+   */
+  centerOnHighlight?: boolean;
   /** Response cache. Omit to make every run hit the network. */
   cache?: CacheLike;
   geocode?: Omit<GeocodeOptions, 'cache' | 'signal'>;
@@ -93,14 +101,43 @@ export async function renderCityScene(
   const radius = clampRadius(options.radius ?? DEFAULT_RADIUS_METRES);
   const { cache, signal, onProgress } = options;
 
-  const place = await geocode(query, {
+  const matched = await geocode(query, {
     ...options.geocode,
     ...(options.region ? { boundary: true } : {}),
     ...(cache ? { cache } : {}),
     ...(signal ? { signal } : {}),
     ...(onProgress ? { onProgress } : {}),
   });
-  onProgress?.(`Resolved to ${place.displayName}`);
+  onProgress?.(`Resolved to ${matched.displayName}`);
+
+  // The highlight is resolved before the map data is fetched, because it may
+  // decide where the bounding box goes.
+  let highlightTarget: Place | undefined;
+  if (options.highlight) {
+    highlightTarget = await geocode(options.highlight, {
+      ...options.geocode,
+      ...(cache ? { cache } : {}),
+      ...(signal ? { signal } : {}),
+      ...(onProgress ? { onProgress } : {}),
+    });
+  }
+
+  let place = matched;
+  if (options.centerOnHighlight) {
+    if (!highlightTarget) {
+      onProgress?.('Warning: nothing to centre on — pass a highlight as well.');
+    } else if (options.region) {
+      onProgress?.(
+        'Warning: centring has no effect with a region render; the boundary sets the frame.',
+      );
+    } else {
+      // Keep the matched place's naming, move its origin to the address.
+      place = { ...matched, centre: highlightTarget.centre };
+      onProgress?.(
+        `Centred on ${highlightTarget.centre.lat.toFixed(5)}, ${highlightTarget.centre.lon.toFixed(5)}`,
+      );
+    }
+  }
 
   let boundary: Boundary | undefined;
   if (options.region) {
@@ -133,17 +170,15 @@ export async function renderCityScene(
   });
 
   let highlight: { position: Point; label?: string } | undefined;
-  if (options.highlight) {
-    const target = await geocode(options.highlight, {
-      ...options.geocode,
-      ...(cache ? { cache } : {}),
-      ...(signal ? { signal } : {}),
-      ...(onProgress ? { onProgress } : {}),
-    });
+  if (options.highlight && highlightTarget) {
     const label = options.highlightLabel ?? describeQuery(options.highlight);
-    highlight = { position: toLocal(place.centre, target.centre.lat, target.centre.lon), label };
+    highlight = {
+      position: toLocal(place.centre, highlightTarget.centre.lat, highlightTarget.centre.lon),
+      label,
+    };
     onProgress?.(
-      `Highlighting ${label} at ${target.centre.lat.toFixed(5)}, ${target.centre.lon.toFixed(5)}`,
+      `Highlighting ${label} at ${highlightTarget.centre.lat.toFixed(5)}, ` +
+        `${highlightTarget.centre.lon.toFixed(5)}`,
     );
   }
 

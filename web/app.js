@@ -23,6 +23,10 @@ const els = {
   trees: $('trees'),
   shadows: $('shadows'),
   highlight: $('highlight'),
+  center: $('center'),
+  centerRow: $('centerRow'),
+  stage: $('stage'),
+  loaderText: $('loaderText'),
   render: $('render'),
   download: $('download'),
   status: $('status'),
@@ -54,15 +58,44 @@ els.radius.addEventListener('input', syncOutputs);
 els.width.addEventListener('input', syncOutputs);
 syncOutputs();
 
-// The region toggle makes the radius meaningless — say so rather than leaving
-// a live-looking control that does nothing.
+// A region render is framed by its boundary, so both the radius and the
+// centring option stop meaning anything. Show that rather than leaving
+// live-looking controls that quietly do nothing.
 const syncRegion = () => {
   const disabled = els.region.checked;
   els.radius.disabled = disabled;
-  els.radius.closest('label').style.opacity = disabled ? 0.45 : 1;
+  els.radius.closest('label').classList.toggle('is-disabled', disabled);
+  els.center.disabled = disabled;
+  els.centerRow.classList.toggle('is-disabled', disabled);
 };
 els.region.addEventListener('change', syncRegion);
 syncRegion();
+
+const LOADING_MESSAGES = [
+  'Building your city…',
+  'Extruding rooftops…',
+  'Laying out streets…',
+  'Planting trees…',
+  'Placing every pixel…',
+];
+let messageTimer = null;
+
+function startLoading() {
+  els.stage.classList.add('is-loading');
+  let i = 0;
+  els.loaderText.textContent = LOADING_MESSAGES[0];
+  clearInterval(messageTimer);
+  messageTimer = setInterval(() => {
+    i = (i + 1) % LOADING_MESSAGES.length;
+    els.loaderText.textContent = LOADING_MESSAGES[i];
+  }, 2200);
+}
+
+function stopLoading() {
+  els.stage.classList.remove('is-loading');
+  clearInterval(messageTimer);
+  messageTimer = null;
+}
 
 function setStatus(message, isError = false) {
   els.status.textContent = message;
@@ -99,7 +132,10 @@ function readForm() {
     shadows: els.shadows.checked,
     layers: { trees: els.trees.checked },
   };
-  if (highlightText) options.highlight = { q: highlightText };
+  if (highlightText) {
+    options.highlight = { q: highlightText };
+    options.centerOnHighlight = els.center.checked;
+  }
   return { query, options, highlightText };
 }
 
@@ -110,6 +146,7 @@ function updateHash(query, highlightText) {
   if (els.theme.value !== DEFAULT_THEME) params.set('theme', els.theme.value);
   if (!els.region.checked) params.set('r', els.radius.value);
   if (highlightText) params.set('at', highlightText);
+  if (highlightText && els.center.checked) params.set('center', '1');
   history.replaceState(null, '', `#${params.toString()}`);
 }
 
@@ -118,6 +155,7 @@ function applyHash() {
   const params = new URLSearchParams(location.hash.slice(1));
   if (params.get('q')) els.query.value = params.get('q');
   if (params.get('at')) els.highlight.value = params.get('at');
+  els.center.checked = params.get('center') === '1';
   if (params.get('theme') && THEME_NAMES.includes(params.get('theme'))) {
     els.theme.value = params.get('theme');
   }
@@ -143,6 +181,7 @@ async function render(event) {
   els.render.disabled = true;
   els.download.disabled = true;
   els.stats.textContent = '';
+  startLoading();
   setStatus('Starting…');
   updateHash(query, highlightText);
 
@@ -175,6 +214,7 @@ async function render(event) {
     if (inFlight === controller) {
       inFlight = null;
       els.render.disabled = false;
+      stopLoading();
     }
   }
 }

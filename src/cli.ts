@@ -34,6 +34,8 @@ EXAMPLES
   iso-cities "Bruges, Belgium" --region --no-trees
   iso-cities --postcode 10115 --country DE --region \\
              --highlight "Museum fuer Naturkunde, Berlin"
+  iso-cities "Berlin" --highlight "Museum fuer Naturkunde" \\
+             --center-on-highlight --radius 250
 
 PLACE
   --city <name>            City, town or district name
@@ -57,6 +59,8 @@ HIGHLIGHT
       --highlight-lon <d>
       --highlight-label <t>  Label to draw for it (default: the query text)
       --highlight-color <hex>  Accent colour (default: ${DEFAULT_HIGHLIGHT_COLOR})
+      --center-on-highlight  Frame the render on the address instead of the
+                           matched place, keeping --radius around it
       --no-marker          Skip the pin, colour the building only
       --no-desaturate      Keep everything in colour, just accent the match
 
@@ -137,6 +141,8 @@ export async function main(argv: string[]): Promise<number> {
         'highlight-lon': { type: 'string' },
         'highlight-label': { type: 'string' },
         'highlight-color': { type: 'string' },
+        'center-on-highlight': { type: 'boolean' },
+        'centre-on-highlight': { type: 'boolean' },
         'no-marker': { type: 'boolean' },
         'no-desaturate': { type: 'boolean' },
 
@@ -247,6 +253,7 @@ export async function main(argv: string[]): Promise<number> {
       ...(highlight ? { highlight } : {}),
       ...(flags['highlight-label'] ? { highlightLabel: flags['highlight-label'] as string } : {}),
       ...(flags['highlight-color'] ? { highlightColor: flags['highlight-color'] as string } : {}),
+      centerOnHighlight: Boolean(flags['center-on-highlight'] || flags['centre-on-highlight']),
       marker: !flags['no-marker'],
       ...(flags['no-desaturate'] ? { desaturate: false } : {}),
       width: numberFlag(flags, 'width', 1024),
@@ -395,6 +402,9 @@ function buildHighlightQuery(flags: ParsedFlags): PlaceQuery | undefined {
     return { q: address };
   }
 
+  if (flags['center-on-highlight'] || flags['centre-on-highlight']) {
+    throw new Error('--center-on-highlight needs --highlight or --highlight-lat/-lon to centre on.');
+  }
   if (flags['highlight-label'] || flags['highlight-color']) {
     throw new Error('--highlight-label and --highlight-color need --highlight or --highlight-lat/-lon.');
   }

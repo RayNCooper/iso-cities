@@ -127,6 +127,21 @@ test('highlight styling flags without a highlight are rejected', async () => {
   assert.match(result.stderr, /need --highlight/);
 });
 
+test('--center-on-highlight without a highlight is rejected', async () => {
+  const result = await run(['Berlin', '--center-on-highlight']);
+  assert.equal(result.code, 2);
+  assert.match(result.stderr, /needs --highlight/);
+});
+
+test('both spellings of --cent(er|re)-on-highlight are accepted', async () => {
+  for (const flag of ['--center-on-highlight', '--centre-on-highlight']) {
+    const result = await run(['Berlin', flag]);
+    // Reaches the highlight validation rather than "unknown option".
+    assert.equal(result.code, 2, `${flag} should parse`);
+    assert.match(result.stderr, /needs --highlight/, `${flag} should be a known flag`);
+  }
+});
+
 test('--region and --highlight appear in the help', async () => {
   const help = await run(['--help']);
   assert.match(help.stdout, /--region/);

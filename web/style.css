@@ -1,27 +1,55 @@
-/* iso-cities demo page. Deliberately plain: the artwork is the point. */
+/*
+ * iso-cities demo page.
+ *
+ * Styled to Olio's identity: the slate/indigo scale their site uses, Merriweather
+ * throughout, and their 0.5rem corner radius. Tokens are named after the ones on
+ * olio.solutions so they stay easy to reconcile.
+ */
 
 :root {
-  --paper: #f4f1e8;
-  --ink: #2f2a20;
-  --muted: #6d6656;
-  --line: #ddd6c4;
-  --panel: #fffdf7;
-  --accent: #b4553c;
-  --accent-ink: #ffffff;
-  --shadow: rgba(60, 50, 30, 0.14);
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-ink: #ffffff;
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --muted-foreground: #6b7280;
+  --accent: #e0e7ff;
+  --muted: #f3f4f6;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --radius: 0.5rem;
+
+  /* Isometric loader faces, brightest on top as the renderer itself shades. */
+  --iso-top: #6366f1;
+  --iso-left: #4f46e5;
+  --iso-right: #4338ca;
+  --iso-ground: #e0e7ff;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 16px rgb(15 23 42 / 0.08);
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #17161c;
-    --ink: #e8e4d9;
-    --muted: #9c968a;
-    --line: #33313c;
-    --panel: #201f27;
-    --accent: #ff7a55;
-    --accent-ink: #1a1219;
-    --shadow: rgba(0, 0, 0, 0.5);
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-ink: #1e1b4b;
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --muted-foreground: #94a3b8;
+    --accent: #1e1b4b;
+    --muted: #1e293b;
+    --card: #1e293b;
+    --border: #334155;
+
+    --iso-top: #a5b4fc;
+    --iso-left: #818cf8;
+    --iso-right: #6366f1;
+    --iso-ground: #1e1b4b;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45);
   }
 }
 
@@ -31,125 +59,169 @@
 
 body {
   margin: 0;
-  padding: 2rem 1.25rem 4rem;
-  background: var(--paper);
-  color: var(--ink);
-  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 0 1.25rem 4rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Merriweather, Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
-.masthead,
+.masthead-inner,
 main {
   max-width: 68rem;
   margin: 0 auto;
 }
 
 .masthead {
-  margin-bottom: 2rem;
+  padding: 3rem 0 2rem;
 }
 
 h1 {
-  margin: 0 0 0.35rem;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: clamp(1.9rem, 4vw, 2.6rem);
-  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+  font-size: clamp(2rem, 4.5vw, 2.9rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--primary);
 }
 
 .tagline {
-  margin: 0 0 0.75rem;
-  max-width: 46rem;
-  color: var(--muted);
+  margin: 0 0 1rem;
+  max-width: 44rem;
+  color: var(--muted-foreground);
 }
 
-.links a {
-  color: var(--ink);
-  margin-right: 1rem;
+.links {
+  margin: 0;
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+a {
+  color: var(--primary);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
-.links a:hover {
-  color: var(--accent);
+a:hover {
+  color: var(--primary-hover);
 }
 
+/* ---------------------------------------------------------------- controls */
+
 form {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 1.1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
+  gap: 1rem;
   align-items: flex-end;
 }
 
 label {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.86rem;
-  color: var(--muted);
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
 }
 
 label.grow {
   flex: 1 1 18rem;
 }
 
-input[type="text"],
-select {
-  font: inherit;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--ink);
-  min-width: 0;
+label.grow-sm {
+  flex: 1 1 14rem;
 }
 
-input[type="text"]:focus-visible,
+input[type='text'],
+select {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input[type='text']:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  outline: none;
+}
+
+input[type='text']:focus-visible,
 select:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--accent);
+button:focus-visible,
+input[type='range']:focus-visible,
+input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-input[type="range"] {
+input[type='range'] {
   width: 11rem;
-  accent-color: var(--accent);
+  accent-color: var(--primary);
+}
+
+input[type='range']:disabled {
+  opacity: 0.4;
 }
 
 .toggles {
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 label.check {
   flex-direction: row;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
   cursor: pointer;
+  color: var(--foreground);
+  font-size: 0.9rem;
 }
 
 label.check input {
-  accent-color: var(--accent);
+  accent-color: var(--primary);
+  width: 1rem;
+  height: 1rem;
+}
+
+label.check.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 button {
   font: inherit;
-  font-weight: 600;
-  padding: 0.6rem 1.15rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.65rem 1.4rem;
   border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-ink);
   cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s;
 }
 
 button:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--primary-hover);
 }
 
 button:disabled {
@@ -159,29 +231,38 @@ button:disabled {
 
 #download {
   background: transparent;
-  color: var(--ink);
-  border-color: var(--line);
+  color: var(--foreground);
+  border-color: var(--border);
+  font-weight: 400;
 }
 
+#download:hover:not(:disabled) {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+/* ------------------------------------------------------------------- stage */
+
 .status {
-  margin: 1rem 0 0.6rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.82rem;
-  color: var(--muted);
-  min-height: 1.4em;
+  margin: 1.1rem 0 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  min-height: 1.5em;
 }
 
 .status.error {
-  color: var(--accent);
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .stage {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  padding: 0.6rem;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  background: var(--card);
+  padding: 0.75rem;
   overflow-x: auto;
-  box-shadow: 0 1px 3px var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 
 canvas {
@@ -189,47 +270,160 @@ canvas {
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+  border-radius: calc(var(--radius) / 2);
   /* The whole point: never smooth pixel art. */
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
 .actions {
-  margin-top: 0.9rem;
+  margin-top: 1rem;
   align-items: center;
 }
 
 .stats {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
+
+/* ------------------------------------------------------------------ loader */
+
+.loader {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  /* Lets the previous render show through faintly rather than blanking it. */
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(2px);
+  border-radius: calc(var(--radius) * 1.5);
+}
+
+.stage.is-loading .loader {
+  display: flex;
+}
+
+.loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.25rem 1.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  box-shadow: var(--shadow-md);
+}
+
+.iso {
+  width: 120px;
+  height: 92px;
+  overflow: visible;
+}
+
+.iso-ground {
+  fill: var(--iso-ground);
+}
+
+.iso-cube {
+  /* Each block drops in, holds, then fades — a city assembling on a loop. */
+  animation: iso-rise 2s cubic-bezier(0.34, 1.4, 0.64, 1) infinite;
+  animation-delay: calc(var(--i) * 0.16s);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.f-top {
+  fill: var(--iso-top);
+}
+.f-left {
+  fill: var(--iso-left);
+}
+.f-right {
+  fill: var(--iso-right);
+}
+
+@keyframes iso-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  22%,
+  70% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+.loader-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iso-cube {
+    animation: iso-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes iso-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------- notes */
 
 .notes {
   margin-top: 3rem;
-  max-width: 46rem;
-  color: var(--muted);
+  max-width: 44rem;
+  color: var(--muted-foreground);
 }
 
 .notes h2 {
-  font-size: 1.05rem;
-  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--foreground);
   margin-bottom: 0.5rem;
-}
-
-.notes a {
-  color: inherit;
 }
 
 .credit {
   font-size: 0.85rem;
 }
 
+.colophon {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
 @media (max-width: 40rem) {
-  input[type="range"] {
+  .masthead {
+    padding-top: 2rem;
+  }
+  input[type='range'] {
     width: 100%;
   }
   label:not(.check) {
+    flex: 1 1 100%;
+  }
+  .row.primary button {
     flex: 1 1 100%;
   }
 }

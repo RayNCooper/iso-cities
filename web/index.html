@@ -8,20 +8,24 @@
       name="description"
       content="Turn any city or postal code into an isometric pixel-art city, rendered live from OpenStreetMap data in your browser."
     />
+    <meta name="theme-color" content="#4f46e5" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%8F%99%EF%B8%8F</text></svg>" />
+    <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <header class="masthead">
-      <h1>iso-cities</h1>
-      <p class="tagline">
-        Any city or postal code, drawn as isometric pixel art from real OpenStreetMap data.
-        Everything below runs in your browser — no server, no upload.
-      </p>
-      <p class="links">
-        <a href="https://github.com/RayNCooper/iso-cities">Source on GitHub</a>
-        <a href="https://www.npmjs.com/package/iso-cities">npm</a>
-      </p>
+      <div class="masthead-inner">
+        <h1>iso&#8209;cities</h1>
+        <p class="tagline">
+          Any city or postal code, drawn as isometric pixel art from real OpenStreetMap data.
+          Everything below runs in your browser — no server, nothing uploaded.
+        </p>
+        <p class="links">
+          <a class="link-primary" href="https://github.com/RayNCooper/iso-cities">Source on GitHub</a>
+          <a href="https://www.npmjs.com/package/iso-cities">npm</a>
+        </p>
+      </div>
     </header>
 
     <main>
@@ -41,7 +45,7 @@
         </div>
 
         <div class="row">
-          <label>
+          <label class="grow-sm">
             <span>Theme</span>
             <select id="theme"></select>
           </label>
@@ -58,7 +62,7 @@
         <div class="row toggles">
           <label class="check">
             <input id="region" type="checkbox" />
-            <span>Whole region shape (postcode or city boundary)</span>
+            <span>Whole region shape</span>
           </label>
           <label class="check">
             <input id="trees" type="checkbox" checked />
@@ -76,12 +80,49 @@
             <input id="highlight" type="text" placeholder="Museum für Naturkunde, Berlin" />
           </label>
         </div>
+
+        <div class="row toggles">
+          <label class="check" id="centerRow">
+            <input id="center" type="checkbox" />
+            <span>Centre the view on that address, not the place</span>
+          </label>
+        </div>
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite">Ready.</p>
 
       <div id="stage" class="stage">
         <canvas id="canvas" width="900" height="500"></canvas>
+
+        <!-- Shown while a render is in flight: a little city assembling itself. -->
+        <div id="loader" class="loader" aria-hidden="true">
+          <div class="loader-card">
+            <svg class="iso" viewBox="0 0 140 108" role="img" aria-label="Building a city">
+              <ellipse class="iso-ground" cx="70" cy="62" rx="52" ry="26" />
+              <g class="iso-cube" style="--i: 0">
+                <polygon class="f-top" points="70,27.5 83,34 70,40.5 57,34" />
+                <polygon class="f-left" points="57,34 70,40.5 70,60.5 57,54" />
+                <polygon class="f-right" points="83,34 70,40.5 70,60.5 83,54" />
+              </g>
+              <g class="iso-cube" style="--i: 1">
+                <polygon class="f-top" points="57,34 70,40.5 57,47 44,40.5" />
+                <polygon class="f-left" points="44,40.5 57,47 57,75 44,68.5" />
+                <polygon class="f-right" points="70,40.5 57,47 57,75 70,68.5" />
+              </g>
+              <g class="iso-cube" style="--i: 2">
+                <polygon class="f-top" points="83,34 96,40.5 83,47 70,40.5" />
+                <polygon class="f-left" points="70,40.5 83,47 83,63 70,56.5" />
+                <polygon class="f-right" points="96,40.5 83,47 83,63 96,56.5" />
+              </g>
+              <g class="iso-cube" style="--i: 3">
+                <polygon class="f-top" points="70,40.5 83,47 70,53.5 57,47" />
+                <polygon class="f-left" points="57,47 70,53.5 70,77.5 57,71" />
+                <polygon class="f-right" points="83,47 70,53.5 70,77.5 83,71" />
+              </g>
+            </svg>
+            <p class="loader-text" id="loaderText">Building your city…</p>
+          </div>
+        </div>
       </div>
 
       <div class="row actions">
@@ -95,8 +136,7 @@
           The place is geocoded with Nominatim, the buildings, roads, water and green space around
           it come from the Overpass API, and every footprint is extruded to its real height and
           drawn back to front in a 2:1 isometric projection. The rasteriser and the bitmap font are
-          part of the library; there is no canvas drawing API involved beyond handing over the
-          finished pixels.
+          part of the library; no canvas drawing API is involved beyond handing over finished pixels.
         </p>
         <p>
           A smaller radius means more pixels per metre, so buildings get chunkier and windows
@@ -104,11 +144,17 @@
           not the renderer.
         </p>
         <p class="credit">
-          Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>,
-          licensed under the ODbL. Images you save keep that credit drawn in. Please be gentle with
-          the public APIs — requests are rate limited to one per second and cached in memory.
+          Map data ©
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, licensed
+          under the ODbL. Images you save keep that credit drawn in. Please be gentle with the
+          public APIs — requests are rate limited to one per second and cached in memory.
         </p>
       </section>
+
+      <footer class="colophon">
+        <span>An open-source experiment by <a href="https://olio.solutions">Olio</a>.</span>
+        <a href="https://github.com/RayNCooper/iso-cities">MIT licensed</a>
+      </footer>
     </main>
 
     <script type="module" src="./app.js"></script>

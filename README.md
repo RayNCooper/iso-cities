@@ -131,10 +131,24 @@ The pin is sized from the canvas rather than from world units, so it stays finda
 | --- | --- |
 | `--highlight <address>` | Geocode and spotlight this address |
 | `--highlight-lat/-lon` | Spotlight an exact coordinate instead |
+| `--center-on-highlight` | Frame the render on the address, not the place |
 | `--highlight-label <text>` | Override the drawn label |
 | `--highlight-color <hex>` | Accent colour (default `#ff4a2b`) |
 | `--no-marker` | Colour the building but skip the pin |
 | `--no-desaturate` | Keep the city in colour, just accent the match |
+
+### Centring on the address
+
+By default the frame is centred on whatever the *place* query resolved to, which for a big city is its centroid — so a highlighted address can land anywhere in the picture, or outside it entirely. `--center-on-highlight` moves the origin to the address and keeps `--radius` around it:
+
+```bash
+iso-cities "Berlin" --highlight "Museum für Naturkunde" \
+           --center-on-highlight --radius 250
+```
+
+![The Naturkundemuseum centred in 250 m of grey Berlin](examples/berlin-centred.png)
+
+`--centre-on-highlight` works too. The flag has no effect with `--region`, where the boundary decides the framing — you get a warning rather than silence.
 
 ## Themes
 

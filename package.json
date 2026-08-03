@@ -1,0 +1,63 @@
+{
+  "name": "iso-cities",
+  "version": "0.1.0",
+  "description": "Turn any city or postal code into an isometric pixel-art city, rendered from OpenStreetMap data. Zero runtime dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "iso-cities": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "ATTRIBUTION.md"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('build',{recursive:true,force:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "tsc -p tsconfig.json",
+    "test": "node scripts/run-tests.mjs",
+    "start": "npm run build && node dist/cli.js",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "isometric",
+    "pixel-art",
+    "openstreetmap",
+    "osm",
+    "overpass",
+    "nominatim",
+    "map",
+    "generative",
+    "city",
+    "png",
+    "cartography"
+  ],
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RayNCooper/iso-cities.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RayNCooper/iso-cities/issues"
+  },
+  "homepage": "https://github.com/RayNCooper/iso-cities#readme",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

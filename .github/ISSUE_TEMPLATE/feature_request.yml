@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a theme, a rendering feature, or better map coverage.
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - A new theme
+        - Rendering / visual detail
+        - OSM tag coverage (something is not drawn)
+        - CLI or API ergonomics
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it useful?
+      description: What are you trying to make that you cannot make today?
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference
+      description: >
+        For visual features, a reference image helps a great deal. For missing
+        map features, a link to the OSM element or the relevant tag on the
+        OSM wiki tells us exactly what to add.

@@ -1,0 +1,51 @@
+name: Bug report
+description: Something rendered wrong, crashed, or did not behave as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command or API call you ran.
+      render: shell
+      placeholder: iso-cities --postcode 10115 --country DE --theme dusk
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: image
+    attributes:
+      label: Output image
+      description: >
+        If this is a rendering problem, please attach the image — drag and drop
+        it here. A picture settles these far faster than a description.
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Console output
+      description: Anything printed to the terminal, including the error.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `iso-cities --version`.
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version and OS
+      placeholder: Node 22.11 on macOS 15
+    validations:
+      required: true

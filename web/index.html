@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>iso-cities — any city as isometric pixel art</title>
+    <meta
+      name="description"
+      content="Turn any city or postal code into an isometric pixel-art city, rendered live from OpenStreetMap data in your browser."
+    />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%8F%99%EF%B8%8F</text></svg>" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>iso-cities</h1>
+      <p class="tagline">
+        Any city or postal code, drawn as isometric pixel art from real OpenStreetMap data.
+        Everything below runs in your browser — no server, no upload.
+      </p>
+      <p class="links">
+        <a href="https://github.com/RayNCooper/iso-cities">Source on GitHub</a>
+        <a href="https://www.npmjs.com/package/iso-cities">npm</a>
+      </p>
+    </header>
+
+    <main>
+      <form id="controls" autocomplete="off">
+        <div class="row primary">
+          <label class="grow">
+            <span>Place</span>
+            <input
+              id="query"
+              type="text"
+              value="Porto"
+              placeholder="Kreuzberg, Berlin — or a postcode"
+              required
+            />
+          </label>
+          <button id="render" type="submit">Render</button>
+        </div>
+
+        <div class="row">
+          <label>
+            <span>Theme</span>
+            <select id="theme"></select>
+          </label>
+          <label>
+            <span>Radius <output id="radiusOut">400</output> m</span>
+            <input id="radius" type="range" min="80" max="1200" step="20" value="400" />
+          </label>
+          <label>
+            <span>Width <output id="widthOut">900</output> px</span>
+            <input id="width" type="range" min="400" max="1600" step="100" value="900" />
+          </label>
+        </div>
+
+        <div class="row toggles">
+          <label class="check">
+            <input id="region" type="checkbox" />
+            <span>Whole region shape (postcode or city boundary)</span>
+          </label>
+          <label class="check">
+            <input id="trees" type="checkbox" checked />
+            <span>Trees</span>
+          </label>
+          <label class="check">
+            <input id="shadows" type="checkbox" checked />
+            <span>Shadows</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="grow">
+            <span>Highlight an address (optional)</span>
+            <input id="highlight" type="text" placeholder="Museum für Naturkunde, Berlin" />
+          </label>
+        </div>
+      </form>
+
+      <p id="status" class="status" role="status" aria-live="polite">Ready.</p>
+
+      <div id="stage" class="stage">
+        <canvas id="canvas" width="900" height="500"></canvas>
+      </div>
+
+      <div class="row actions">
+        <button id="download" type="button" disabled>Download PNG</button>
+        <span id="stats" class="stats"></span>
+      </div>
+
+      <section class="notes">
+        <h2>What you are looking at</h2>
+        <p>
+          The place is geocoded with Nominatim, the buildings, roads, water and green space around
+          it come from the Overpass API, and every footprint is extruded to its real height and
+          drawn back to front in a 2:1 isometric projection. The rasteriser and the bitmap font are
+          part of the library; there is no canvas drawing API involved beyond handing over the
+          finished pixels.
+        </p>
+        <p>
+          A smaller radius means more pixels per metre, so buildings get chunkier and windows
+          appear. Larger areas mean a lot more map data — the public Overpass API is the slow part,
+          not the renderer.
+        </p>
+        <p class="credit">
+          Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>,
+          licensed under the ODbL. Images you save keep that credit drawn in. Please be gentle with
+          the public APIs — requests are rate limited to one per second and cached in memory.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

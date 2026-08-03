@@ -2,6 +2,8 @@
 
 Turn any city or postal code into an isometric pixel-art city, rendered from real OpenStreetMap data.
 
+**[Try it in your browser →](https://rayncooper.github.io/iso-cities/)** — no install, nothing uploaded, the whole renderer runs client-side.
+
 ```bash
 npx iso-cities "Kreuzberg, Berlin"
 npx iso-cities --postcode 10115 --country DE --theme dusk
@@ -204,6 +206,30 @@ for (const theme of ['daylight', 'noir', 'gameboy']) {
 ```
 
 Renders are **deterministic**: the same query, seed and options always produce byte-identical output.
+
+### In the browser
+
+The renderer core never touched Node in the first place — only PNG encoding, the disk cache and the CLI did. So `iso-cities/browser` needs no bundler, no polyfills and no shims:
+
+```js
+import { renderCityToImageData, MemoryCache } from 'iso-cities/browser';
+
+const cache = new MemoryCache();
+const { imageData, scene } = await renderCityToImageData({ q: 'Porto' }, { cache, radius: 300 });
+
+canvas.width = imageData.width;
+canvas.height = imageData.height;
+canvas.getContext('2d').putImageData(imageData, 0, 0);
+```
+
+The raster is already RGBA in exactly `ImageData`'s layout, so there is no format conversion. PNG encoding is skipped entirely — `canvas.toBlob()` does it natively, faster and smaller than shipping a deflate implementation to the browser.
+
+Both Nominatim and Overpass send `Access-Control-Allow-Origin: *`, so this runs entirely client-side with no proxy. Two caveats worth knowing:
+
+- Browsers **forbid setting a custom User-Agent**, so identification falls to the `Referer` header your page sends. Read [ATTRIBUTION.md](ATTRIBUTION.md) before deploying this anywhere busy.
+- The disk cache is replaced by an in-memory LRU, so a page reload starts cold.
+
+The demo page under [`web/`](web) is the whole thing in about 200 lines. `npm run serve` builds and serves it at `localhost:8080`.
 
 ## How it works
 

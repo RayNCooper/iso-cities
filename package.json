@@ -9,7 +9,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.js",
       "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
     },
     "./package.json": "./package.json"
   },
@@ -32,6 +37,8 @@
     "pretest": "tsc -p tsconfig.json",
     "test": "node scripts/run-tests.mjs",
     "start": "npm run build && node dist/cli.js",
+    "build:site": "npm run build && node scripts/build-site.mjs",
+    "serve": "npm run build:site && node scripts/serve.mjs",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -47,7 +54,7 @@
     "png",
     "cartography"
   ],
-  "author": "",
+  "author": "Dennis Reinkober (https://github.com/RayNCooper)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RayNCooper/iso-cities.git"

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { renderCity, clampRadius, DEFAULT_RADIUS_METRES, MAX_RADIUS_METRES, MIN_RADIUS_METRES } from './index.js';
-import { ResponseCache, defaultCacheDir } from './net/cache.js';
+import { ResponseCache, defaultCacheDir } from './net/cache-node.js';
 import { GeocodeError, type PlaceQuery } from './net/nominatim.js';
 import { OverpassError } from './net/overpass.js';
 import { DEFAULT_THEME, THEMES, THEME_NAMES } from './render/palette.js';

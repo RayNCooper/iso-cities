@@ -7,7 +7,7 @@
  * wrong country.
  */
 
-import { ResponseCache, cacheKey, DAY_MS } from './cache.js';
+import { cacheKey, envVar, DAY_MS, type CacheLike } from './cache.js';
 import { request } from './http.js';
 import { geometryToPolygons, type GeoJsonGeometry } from '../geo/boundary.js';
 import type { Place } from '../types.js';
@@ -34,7 +34,7 @@ export interface GeocodeOptions {
   url?: string;
   userAgent?: string;
   timeoutMs?: number;
-  cache?: ResponseCache;
+  cache?: CacheLike;
   signal?: AbortSignal;
   /** Preferred language for returned names, e.g. `en` or `de`. */
   language?: string;
@@ -130,7 +130,7 @@ function labelFor(result: NominatimResult, query: PlaceQuery): string {
 
 export async function geocode(query: PlaceQuery, options: GeocodeOptions = {}): Promise<Place> {
   const {
-    url = process.env['ISO_CITIES_NOMINATIM_URL'] ?? DEFAULT_NOMINATIM_URL,
+    url = envVar('ISO_CITIES_NOMINATIM_URL') ?? DEFAULT_NOMINATIM_URL,
     language = 'en',
     cache,
     signal,
@@ -201,7 +201,7 @@ async function reverseGeocode(
   options: GeocodeOptions,
 ): Promise<Place> {
   const {
-    url = process.env['ISO_CITIES_NOMINATIM_URL'] ?? DEFAULT_NOMINATIM_URL,
+    url = envVar('ISO_CITIES_NOMINATIM_URL') ?? DEFAULT_NOMINATIM_URL,
     language = 'en',
     cache,
     onProgress,
@@ -261,7 +261,7 @@ function toPlace(result: NominatimResult, query: PlaceQuery): Place {
 
 async function cachedRequest(
   endpoint: string,
-  cache: ResponseCache | undefined,
+  cache: CacheLike | undefined,
   maxAgeMs: number,
   options: GeocodeOptions,
 ): Promise<string> {

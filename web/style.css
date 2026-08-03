@@ -1,0 +1,235 @@
+/* iso-cities demo page. Deliberately plain: the artwork is the point. */
+
+:root {
+  --paper: #f4f1e8;
+  --ink: #2f2a20;
+  --muted: #6d6656;
+  --line: #ddd6c4;
+  --panel: #fffdf7;
+  --accent: #b4553c;
+  --accent-ink: #ffffff;
+  --shadow: rgba(60, 50, 30, 0.14);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17161c;
+    --ink: #e8e4d9;
+    --muted: #9c968a;
+    --line: #33313c;
+    --panel: #201f27;
+    --accent: #ff7a55;
+    --accent-ink: #1a1219;
+    --shadow: rgba(0, 0, 0, 0.5);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.masthead,
+main {
+  max-width: 68rem;
+  margin: 0 auto;
+}
+
+.masthead {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  margin: 0 0 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: 0 0 0.75rem;
+  max-width: 46rem;
+  color: var(--muted);
+}
+
+.links a {
+  color: var(--ink);
+  margin-right: 1rem;
+  text-underline-offset: 3px;
+}
+
+.links a:hover {
+  color: var(--accent);
+}
+
+form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: flex-end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+label.grow {
+  flex: 1 1 18rem;
+}
+
+input[type="text"],
+select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 0;
+}
+
+input[type="text"]:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  width: 11rem;
+  accent-color: var(--accent);
+}
+
+.toggles {
+  gap: 1.25rem;
+}
+
+label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+
+label.check input {
+  accent-color: var(--accent);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#download {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.status {
+  margin: 1rem 0 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-height: 1.4em;
+}
+
+.status.error {
+  color: var(--accent);
+}
+
+.stage {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 0.6rem;
+  overflow-x: auto;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  /* The whole point: never smooth pixel art. */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.actions {
+  margin-top: 0.9rem;
+  align-items: center;
+}
+
+.stats {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.notes {
+  margin-top: 3rem;
+  max-width: 46rem;
+  color: var(--muted);
+}
+
+.notes h2 {
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.notes a {
+  color: inherit;
+}
+
+.credit {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 40rem) {
+  input[type="range"] {
+    width: 100%;
+  }
+  label:not(.check) {
+    flex: 1 1 100%;
+  }
+}

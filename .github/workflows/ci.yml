@@ -45,3 +45,6 @@ jobs:
 
       - name: Check the CLI starts
         run: node dist/cli.js --version && node dist/cli.js --themes
+
+      - name: Assemble the demo site
+        run: node scripts/build-site.mjs

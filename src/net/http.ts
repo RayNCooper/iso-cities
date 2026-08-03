@@ -9,10 +9,11 @@
  * See ATTRIBUTION.md for the policy links.
  */
 
+import { envVar } from './cache.js';
 import { PACKAGE_NAME, PROJECT_URL, VERSION } from '../version.js';
 
 export const DEFAULT_USER_AGENT =
-  process.env['ISO_CITIES_USER_AGENT'] ?? `${PACKAGE_NAME}/${VERSION} (+${PROJECT_URL})`;
+  envVar('ISO_CITIES_USER_AGENT') ?? `${PACKAGE_NAME}/${VERSION} (+${PROJECT_URL})`;
 
 /** Minimum gap between requests to the same host, in milliseconds. */
 const MIN_INTERVAL_MS = 1100;

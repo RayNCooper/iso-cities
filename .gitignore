@@ -1,6 +1,8 @@
 node_modules/
 dist/
 build/
+_site/
+.playwright-mcp/
 *.tsbuildinfo
 
 # Local render output

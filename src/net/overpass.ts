@@ -6,7 +6,7 @@
  * needed to resolve node references.
  */
 
-import { ResponseCache, cacheKey, DAY_MS } from './cache.js';
+import { cacheKey, envVar, DAY_MS, type CacheLike } from './cache.js';
 import { request, HttpError } from './http.js';
 import { formatBBox, type BBox } from '../geo/project.js';
 import { isOverpassResponse, type OverpassResponse } from '../osm/types.js';
@@ -24,7 +24,7 @@ export interface OverpassOptions {
   urls?: string[];
   userAgent?: string;
   timeoutMs?: number;
-  cache?: ResponseCache;
+  cache?: CacheLike;
   signal?: AbortSignal;
   onProgress?: (message: string) => void;
 }
@@ -149,7 +149,7 @@ export async function fetchOsmData(bbox: BBox, options: OverpassOptions = {}): P
 }
 
 function envMirrors(): string[] | null {
-  const value = process.env['ISO_CITIES_OVERPASS_URL'];
+  const value = envVar('ISO_CITIES_OVERPASS_URL');
   if (!value) return null;
   const list = value
     .split(',')

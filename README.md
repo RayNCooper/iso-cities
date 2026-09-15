@@ -29,6 +29,7 @@ There are **no runtime dependencies**. The polygon rasteriser, the PNG encoder a
 - [Library API](#library-api)
 - [How it works](#how-it-works)
 - [Attribution and fair use](#attribution-and-fair-use)
+- [The outbreak simulation](#the-outbreak-simulation)
 - [Contributing](#contributing)
 
 ---
@@ -320,6 +321,27 @@ This tool talks to volunteer-run infrastructure. It plays by the rules on your b
 
 See [ATTRIBUTION.md](ATTRIBUTION.md) for the details and policy links.
 
+## The outbreak simulation
+
+`outbreak/` is a separate, self-contained piece built on the package: a stochastic metapopulation epidemic model over the Rheinland and the Ruhr, rendered to an isometric pixel-art map. Patient zero is **Eicken**, in Mönchengladbach; it spreads along the real road network and reaches every Kreis in the region.
+
+```bash
+node outbreak/fetch-data.mjs   # once — freezes boundaries, populations, roads
+node outbreak/render.mjs       # simulate, draw, encode → outbreak/out/*.mp4
+node outbreak/render.mjs --frames 0,40,90   # a few stills instead of the film
+node outbreak/render.mjs --sim-only         # recompute the model, skip the pixels
+```
+
+**The data.** 38 Kreise and kreisfreie Städte from OpenStreetMap, subdivided into 646 compartments — the Gemeinden of the Kreise, the Stadtteile of the cities — with populations from Wikidata (P1082, latest statement). Two cities have no districts in OSM at all and enter the model as a single compartment each; that is a real gap in the map data, not a fallback. The Rheinland/Ruhr region is defined by the three Regierungsbezirke Düsseldorf, Köln and Arnsberg, tested as actual polygons so the bounding box's Belgian and Hessian corners stay out.
+
+**The model.** Each compartment carries susceptible/exposed/infectious/turned counts. Transmission is density-weighted, so an apartment district falls from the inside out; walkers leave a compartment as whole people allocated across its twelve nearest neighbours by largest remainder; and a fresh spark usually dies out, with the escape probability falling as the arrival grows — one zombie walking into Düsseldorf is lost, one walking into a village of 400 is a disaster. That last term is what gives the front its ragged edge instead of a clean fill.
+
+Everything is seeded, so a given `--seed` reproduces the run exactly, and the film is a pure function of the simulation plus the camera.
+
+**The picture.** The map is rasterised once — each compartment's screen pixels are collected into an index list, and a frame repaints only the compartments whose state changed, which is a handful on most days. Static line work (Kreis borders, 45k road segments) goes into a sparse overlay blitted on top. The camera opens tight on Eicken and pulls back to the region as the outbreak escapes the city; the pull-back is the story.
+
+Numbers for the default seed (20260914): day 0 Eicken, day 18 Kreis Viersen, day 24 Köln, day 51 Dortmund, day 105 Kreis Soest, 141 days to 99% of 13.3 million. `outbreak/data/outbreak.json` has the full per-Kreis timeline.
+
 ## Contributing
 
 Bug reports, new themes and better tag coverage are all welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -328,7 +350,7 @@ Bug reports, new themes and better tag coverage are all welcome — see [CONTRIB
 git clone https://github.com/RayNCooper/iso-cities.git
 cd iso-cities
 npm install
-npm test          # 108 tests, no network access required
+npm test          # 165 tests, no network access required
 npm run build
 node dist/cli.js "your home town"
 ```

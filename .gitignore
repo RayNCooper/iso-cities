@@ -17,6 +17,12 @@ out/
 .cache/
 .iso-cities-cache/
 
+# The outbreak simulation's raw Overpass/Wikidata responses — 180 MB of
+# per-query dumps that fetch-data.mjs will re-download on demand. The frozen,
+# compact artefacts (region.json, outbreak.json) are kept, so the film can be
+# re-rendered without touching the network at all.
+outbreak/data/raw-*.json
+
 # Editors / OS
 .DS_Store
 .idea/

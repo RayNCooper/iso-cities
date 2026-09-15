@@ -5,7 +5,7 @@
  * dependency on package.json's location at runtime. A unit test asserts the
  * two never drift apart.
  */
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 export const PACKAGE_NAME = 'iso-cities';
 

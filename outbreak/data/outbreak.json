@@ -1,0 +1,438 @@
+{
+  "generated": "2026-09-14T13:24:50.594Z",
+  "seed": 20260914,
+  "region": "Rheinland + Ruhr",
+  "attribution": "Boundaries and roads © OpenStreetMap contributors (ODbL). Populations from Wikidata P1082.",
+  "patientZero": {
+    "district": "Eicken",
+    "city": "Mönchengladbach",
+    "population": 4497
+  },
+  "totals": {
+    "population": 13335983,
+    "districts": 646,
+    "areas": 38
+  },
+  "duration": 141,
+  "final": {
+    "turned": 13201621,
+    "turnedShare": 0.9899248609912301,
+    "collapsedDistricts": 626
+  },
+  "timeline": [
+    {
+      "day": 0,
+      "turned": 1,
+      "affected": 1,
+      "collapsed": 0
+    },
+    {
+      "day": 14,
+      "turned": 63274,
+      "affected": 20,
+      "collapsed": 14
+    },
+    {
+      "day": 28,
+      "turned": 265193,
+      "affected": 53,
+      "collapsed": 24
+    },
+    {
+      "day": 42,
+      "turned": 1479066,
+      "affected": 122,
+      "collapsed": 84
+    },
+    {
+      "day": 56,
+      "turned": 3181666,
+      "affected": 227,
+      "collapsed": 152
+    },
+    {
+      "day": 70,
+      "turned": 6353883,
+      "affected": 367,
+      "collapsed": 278
+    },
+    {
+      "day": 84,
+      "turned": 9153007,
+      "affected": 476,
+      "collapsed": 407
+    },
+    {
+      "day": 98,
+      "turned": 10753094,
+      "affected": 558,
+      "collapsed": 504
+    },
+    {
+      "day": 112,
+      "turned": 12182117,
+      "affected": 611,
+      "collapsed": 573
+    },
+    {
+      "day": 126,
+      "turned": 12915881,
+      "affected": 629,
+      "collapsed": 607
+    },
+    {
+      "day": 140,
+      "turned": 13201621,
+      "affected": 634,
+      "collapsed": 626
+    },
+    {
+      "day": 140,
+      "turned": 13201621,
+      "affected": 634,
+      "collapsed": 626
+    }
+  ],
+  "kreise": [
+    {
+      "name": "Mönchengladbach",
+      "population": 267175,
+      "firstDay": 0,
+      "fallenSubUnits": 43,
+      "subUnits": 44
+    },
+    {
+      "name": "Kreis Viersen",
+      "population": 297193,
+      "firstDay": 15,
+      "fallenSubUnits": 9,
+      "subUnits": 9
+    },
+    {
+      "name": "Rhein-Kreis Neuss",
+      "population": 455615,
+      "firstDay": 18,
+      "fallenSubUnits": 8,
+      "subUnits": 8
+    },
+    {
+      "name": "Düsseldorf",
+      "population": 679988,
+      "firstDay": 22,
+      "fallenSubUnits": 50,
+      "subUnits": 50
+    },
+    {
+      "name": "Krefeld",
+      "population": 230739,
+      "firstDay": 25,
+      "fallenSubUnits": 11,
+      "subUnits": 11
+    },
+    {
+      "name": "Kreis Heinsberg",
+      "population": 263507,
+      "firstDay": 25,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Kreis Wesel",
+      "population": 457020,
+      "firstDay": 36,
+      "fallenSubUnits": 13,
+      "subUnits": 13
+    },
+    {
+      "name": "Duisburg",
+      "population": 500809,
+      "firstDay": 36,
+      "fallenSubUnits": 27,
+      "subUnits": 27
+    },
+    {
+      "name": "Kreis Mettmann",
+      "population": 489147,
+      "firstDay": 39,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Mülheim an der Ruhr",
+      "population": 171674,
+      "firstDay": 45,
+      "fallenSubUnits": 9,
+      "subUnits": 9
+    },
+    {
+      "name": "Kreis Kleve",
+      "population": 320368,
+      "firstDay": 45,
+      "fallenSubUnits": 16,
+      "subUnits": 16
+    },
+    {
+      "name": "Solingen",
+      "population": 164621,
+      "firstDay": 45,
+      "fallenSubUnits": 6,
+      "subUnits": 6
+    },
+    {
+      "name": "Kreis Düren",
+      "population": 279492,
+      "firstDay": 46,
+      "fallenSubUnits": 15,
+      "subUnits": 15
+    },
+    {
+      "name": "Oberhausen",
+      "population": 213178,
+      "firstDay": 46,
+      "fallenSubUnits": 4,
+      "subUnits": 4
+    },
+    {
+      "name": "Städteregion Aachen",
+      "population": 583325,
+      "firstDay": 47,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Essen",
+      "population": 573617,
+      "firstDay": 47,
+      "fallenSubUnits": 47,
+      "subUnits": 50
+    },
+    {
+      "name": "Leverkusen",
+      "population": 168299,
+      "firstDay": 50,
+      "fallenSubUnits": 13,
+      "subUnits": 13
+    },
+    {
+      "name": "Rheinisch-Bergischer Kreis",
+      "population": 283775,
+      "firstDay": 52,
+      "fallenSubUnits": 8,
+      "subUnits": 8
+    },
+    {
+      "name": "Köln",
+      "population": 1025525,
+      "firstDay": 52,
+      "fallenSubUnits": 85,
+      "subUnits": 86
+    },
+    {
+      "name": "Rhein-Erft-Kreis",
+      "population": 476913,
+      "firstDay": 52,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Wuppertal",
+      "population": 357244,
+      "firstDay": 54,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Remscheid",
+      "population": 113333,
+      "firstDay": 57,
+      "fallenSubUnits": 1,
+      "subUnits": 1
+    },
+    {
+      "name": "Ennepe-Ruhr-Kreis",
+      "population": 313003,
+      "firstDay": 64,
+      "fallenSubUnits": 9,
+      "subUnits": 9
+    },
+    {
+      "name": "Oberbergischer Kreis",
+      "population": 273368,
+      "firstDay": 66,
+      "fallenSubUnits": 13,
+      "subUnits": 13
+    },
+    {
+      "name": "Dortmund",
+      "population": 600880,
+      "firstDay": 70,
+      "fallenSubUnits": 3,
+      "subUnits": 3
+    },
+    {
+      "name": "Hagen",
+      "population": 189984,
+      "firstDay": 71,
+      "fallenSubUnits": 9,
+      "subUnits": 9
+    },
+    {
+      "name": "Bochum",
+      "population": 358880,
+      "firstDay": 73,
+      "fallenSubUnits": 27,
+      "subUnits": 28
+    },
+    {
+      "name": "Kreis Unna",
+      "population": 392266,
+      "firstDay": 77,
+      "fallenSubUnits": 10,
+      "subUnits": 10
+    },
+    {
+      "name": "Rhein-Sieg-Kreis",
+      "population": 603456,
+      "firstDay": 77,
+      "fallenSubUnits": 19,
+      "subUnits": 19
+    },
+    {
+      "name": "Kreis Euskirchen",
+      "population": 201636,
+      "firstDay": 77,
+      "fallenSubUnits": 10,
+      "subUnits": 11
+    },
+    {
+      "name": "Märkischer Kreis",
+      "population": 405164,
+      "firstDay": 77,
+      "fallenSubUnits": 15,
+      "subUnits": 15
+    },
+    {
+      "name": "Herne",
+      "population": 156266,
+      "firstDay": 84,
+      "fallenSubUnits": 13,
+      "subUnits": 13
+    },
+    {
+      "name": "Bonn",
+      "population": 323587,
+      "firstDay": 85,
+      "fallenSubUnits": 47,
+      "subUnits": 51
+    },
+    {
+      "name": "Hochsauerlandkreis",
+      "population": 259176,
+      "firstDay": 100,
+      "fallenSubUnits": 11,
+      "subUnits": 12
+    },
+    {
+      "name": "Hamm",
+      "population": 179108,
+      "firstDay": 100,
+      "fallenSubUnits": 1,
+      "subUnits": 1
+    },
+    {
+      "name": "Kreis Olpe",
+      "population": 131265,
+      "firstDay": 100,
+      "fallenSubUnits": 7,
+      "subUnits": 7
+    },
+    {
+      "name": "Kreis Siegen-Wittgenstein",
+      "population": 272509,
+      "firstDay": 101,
+      "fallenSubUnits": 11,
+      "subUnits": 11
+    },
+    {
+      "name": "Kreis Soest",
+      "population": 302878,
+      "firstDay": 105,
+      "fallenSubUnits": 14,
+      "subUnits": 14
+    }
+  ],
+  "firstToFall": [
+    {
+      "district": "Eicken",
+      "area": "Mönchengladbach",
+      "day": 0,
+      "population": 4497
+    },
+    {
+      "district": "Gladbach",
+      "area": "Mönchengladbach",
+      "day": 1,
+      "population": 11929
+    },
+    {
+      "district": "Windberg",
+      "area": "Mönchengladbach",
+      "day": 4,
+      "population": 8222
+    },
+    {
+      "district": "Uedding",
+      "area": "Mönchengladbach",
+      "day": 5,
+      "population": 3861
+    },
+    {
+      "district": "Lürrip",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 3978
+    },
+    {
+      "district": "Hardterbroich-Pesch",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 3354
+    },
+    {
+      "district": "Schrievers",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 2874
+    },
+    {
+      "district": "Bungt",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 2198
+    },
+    {
+      "district": "Dahl",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 2142
+    },
+    {
+      "district": "Westend",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 2080
+    },
+    {
+      "district": "Waldhausen",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 1770
+    },
+    {
+      "district": "Am Wasserturm",
+      "area": "Mönchengladbach",
+      "day": 6,
+      "population": 1518
+    }
+  ]
+}
